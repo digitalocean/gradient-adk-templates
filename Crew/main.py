@@ -3,7 +3,8 @@ CrewAI Trivia Generator
 Searches for news articles on a specific date and topic, then generates interesting trivia.
 """
 
-from crewai import Agent, Task, Crew, Process
+import os
+from crewai import LLM, Agent, Task, Crew, Process
 from crewai_tools import SerperDevTool
 from dotenv import load_dotenv
 from gradient_adk import entrypoint
@@ -23,6 +24,14 @@ def create_trivia_crew(date: str, topic: str):
     - Trivia Agent: Generates interesting facts
     """
 
+    # Create the base LLM that will be used by the agents
+    llm = LLM(
+        model="openai-gpt-4.1",
+        base_url="https://inference.do-ai.run/v1",
+        api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
+        temperature=0.5
+    )
+
     # Agent 1: News Researcher
     researcher = Agent(
         role="News Research Specialist",
@@ -33,6 +42,7 @@ def create_trivia_crew(date: str, topic: str):
         tools=[search_tool],
         verbose=True,
         allow_delegation=False,
+        llm=llm,
     )
 
     # Agent 2: Trivia Generator
@@ -44,6 +54,7 @@ def create_trivia_crew(date: str, topic: str):
         You have a talent for making information engaging and memorable.""",
         verbose=True,
         allow_delegation=False,
+        llm=llm,
     )
 
     # Task 1: Research news articles

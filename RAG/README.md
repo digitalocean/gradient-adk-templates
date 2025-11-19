@@ -7,6 +7,7 @@ Key features
 - Multi-node LangGraph workflow that decides whether to retrieve documents or respond directly
 - In-memory retriever created via `tools.doc_retriever.create_retriever` (points at `./pdfs` by default)
 - Dedicated agents to rewrite the query for better retrieval results and answer generation 
+- All agents use DigitalOcean Gradient AI's serverless inference capabilities for the underlying LLMs.
 
 
 ## Agent Graph
@@ -48,7 +49,7 @@ Key features
 
     `pip install -r requirements.txt`
 
-3. Set the required enviornment variables in the .env file (`OPENAI_API_KEY`).
+3. Set the required enviornment variables in the .env file (`OPENAI_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). Note that both an OpenAI API key and a serverless inference key are required, because the Gradient AI platform does not yet support serverless embeddings. The OpenAI key is used to construct embeddings for the data that is indexed. 
 
 4. Copy over all the PDFs you want to your agent to index into the `./pdfs` folder. The template provides some fact sheets about the Hubble Space Telescope by default.
 
@@ -104,4 +105,5 @@ Key features
 
 ## Notes
 - The retriever uses a local PDF folder by default. If you need a persistent vector store or large-scale index, replace the in-memory retriever in `tools/doc_retriever.py` with a supported vector DB.
+- Make sure you set BOTH `OPENAI_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY` environment variables.
 - If you need to upload a very large number of documents, consider using a dedicated vector DB that is separately deployed. You may run into memory constraints otherwise.

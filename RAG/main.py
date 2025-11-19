@@ -8,14 +8,20 @@ from agents.answer_writer import generate_answer
 from tools.doc_retriever import create_retriever
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 from gradient_adk import entrypoint
 from typing import Dict
 
 
 PDF_FOLDER_PATH = "./pdfs"
 
-response_model = init_chat_model("gpt-4o", temperature=0)
+response_model = ChatOpenAI(
+    model="openai-gpt-4.1",
+    base_url="https://inference.do-ai.run/v1",
+    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
+    temperature=0.2
+)
+
 retriever_tool = create_retriever(PDF_FOLDER_PATH)
 
 

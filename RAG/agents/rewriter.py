@@ -1,5 +1,5 @@
 from langgraph.graph import MessagesState
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 
 REWRITE_PROMPT = (
     "Look at the input and try to reason about the underlying semantic intent / meaning.\n"
@@ -10,7 +10,12 @@ REWRITE_PROMPT = (
     "Formulate an improved question:"
 )
 
-rewriter_model = init_chat_model("gpt-4o", temperature=0)
+rewriter_model = ChatOpenAI(
+    model="openai-gpt-4.1",
+    base_url="https://inference.do-ai.run/v1",
+    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
+    temperature=0
+)
 
 
 def rewrite_question(state: MessagesState):

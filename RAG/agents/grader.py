@@ -1,6 +1,6 @@
 from typing import Literal
 from langgraph.graph import MessagesState
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 GRADE_PROMPT = (
@@ -20,7 +20,12 @@ class GradeDocuments(BaseModel):
     )
 
 
-grader_model = init_chat_model("gpt-4o", temperature=0)
+grader_model = ChatOpenAI(
+    model="openai-gpt-4.1",
+    base_url="https://inference.do-ai.run/v1",
+    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
+    temperature=0
+)
 
 
 def grade_documents(

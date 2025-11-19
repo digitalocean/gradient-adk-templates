@@ -7,7 +7,7 @@ This example agent enhances an LLM with the ability to both search the web, and 
 - `search` — the [Tavily MCP server](https://docs.tavily.com/documentation/mcp), which is a cloud-hosted remote MCP server that enables LLMs to search the web
 - `calculator` — a locally running MCP tool invoked with a `python -m mcp_server_calculator` command
 
-The runtime builds a LangGraph `StateGraph` where the model is bound to the tools discovered from the MCP client and will call them when appropriate.
+The runtime builds a LangGraph `StateGraph` where the model is bound to the tools discovered from the MCP client and will call them when appropriate. The agent is powered by DigitalOcean Gradient AI's serverless inference capabilties. 
 
 
 ## Quickstart 
@@ -17,7 +17,7 @@ The runtime builds a LangGraph `StateGraph` where the model is bound to the tool
 
     pip install -r Templates/MCP/requirements.txt
 
-3. Set the required enviornment variables in the .env file (`TAVILY_API_KEY` and `OPENAI_API_KEY`). You can obtain a Tavily API key for free at [this link](https://app.tavily.com/home). 
+3. Set the required enviornment variables in the .env file (`TAVILY_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain a Tavily API key for free at [this link](https://app.tavily.com/home). 
 
 4. Set your DIGITALOCEAN_API_TOKEN via 
 

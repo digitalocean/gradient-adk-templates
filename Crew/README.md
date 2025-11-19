@@ -2,7 +2,7 @@
 
 This template shows a small Crew AI application that spins up two agents (a researcher and a trivia generator) to find news articles on a given date and topic, then produce interesting trivia facts. It demonstrates how you can deploy agents built with any framework onto the DigitalOcean Gradient AI Platform.
 
-The agent uses [Serper](https://serper.dev), which is a fast Google search API in order to retrieve news articles for a particular date. Even though the agent runs on Crew AI, it can run on the DigitalOcean Gradient AI platform seamlessly. 
+The agent uses [Serper](https://serper.dev), which is a fast Google search API in order to retrieve news articles for a particular date. Even though the agent is built with Crew AI, it can run on the DigitalOcean Gradient AI platform seamlessly, and uses DigitalOcean Gradient AI serverless inference for the underlying Large Language Model. 
 
 ## Quickstart 
 
@@ -13,7 +13,7 @@ The agent uses [Serper](https://serper.dev), which is a fast Google search API i
     pip install -r requirements.txt
     ```
 
-3. Set the required enviornment variables in the .env file (`SERPER_API_KEY` and `OPENAI_API_KEY`). You can obtain a Serper API key for free at [this link](https://serper.dev/api-keys). 
+3. Set the required enviornment variables in the .env file (`SERPER_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain a Serper API key for free at [this link](https://serper.dev/api-keys). 
 
 4. Set your DIGITALOCEAN_API_TOKEN via 
 

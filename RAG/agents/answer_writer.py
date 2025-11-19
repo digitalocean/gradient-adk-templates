@@ -1,5 +1,5 @@
 from langgraph.graph import MessagesState
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 
 GENERATE_PROMPT = (
     "You are an assistant for question-answering tasks. "
@@ -10,7 +10,12 @@ GENERATE_PROMPT = (
     "Context: {context}"
 )
 
-answer_model = init_chat_model("gpt-4o", temperature=0)
+answer_model = ChatOpenAI(
+    model="openai-gpt-4.1",
+    base_url="https://inference.do-ai.run/v1",
+    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
+    temperature=0
+)
 
 
 def generate_answer(state: MessagesState):
