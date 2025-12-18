@@ -1,6 +1,6 @@
 gradient-adk
 langchain==1.0.0
-langchain-core==1.0.0
+langchain-core==1.0.7
 langchain-community
 langgraph==1.0.0
 langchain-openai==1.0.0
