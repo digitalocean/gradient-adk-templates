@@ -1,0 +1,3 @@
+agent_environment: main
+agent_name: agent-tool-calls
+entrypoint_file: main.py
