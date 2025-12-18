@@ -27,13 +27,11 @@ This example leverages the create_agent function from LangChain to call LLMs and
 
     You can invoke it with
     ```
-    curl --location 'http://localhost:8080/run' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "prompt" : {
-                "messages" : "Who was the 2025 MLB baseball MVP?"
-            }
-        }'
+   curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "prompt" : "Who was the 2025 MLB baseball MVP?"
+    }'
     ```
 
 6. Change the name of the agent if you need to in `gradient/agent.yaml` and then deploy with 
@@ -48,8 +46,6 @@ This example leverages the create_agent function from LangChain to call LLMs and
     curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
         --header 'Content-Type: application/json' \
         --data '{
-            "prompt" : {
-                "messages" : "Who was the 2025 MLB baseball MVP?"
-            }
+            "prompt" : "Who was the 2025 MLB baseball MVP?"
         }'
     ```
