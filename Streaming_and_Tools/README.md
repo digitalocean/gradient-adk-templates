@@ -42,7 +42,7 @@ Additionally, this agent yields streaming outputs instead of providing an entire
 
     pip install -r Templates/ToolCalling/requirements.txt
 
-3. Set the required enviornment variables in the .env file (`TAVILY_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain a Tavily API key for free at [this link](https://app.tavily.com/home). 
+3. Set the required environment variables in the .env file (`TAVILY_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain a Tavily API key for free at [this link](https://app.tavily.com/home). 
 
 4. Set your DIGITALOCEAN_API_TOKEN via 
 
