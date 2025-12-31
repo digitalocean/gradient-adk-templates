@@ -51,17 +51,18 @@ An example Gradient ADK agent orchestrated with LangGraph that chains multiple L
 1. Create and activate a virtual environment.
 2. Install dependencies:
 
-	```
-	pip install -r requirements.txt
-	```
+    ```
+    pip install -r requirements.txt
+    ```
 
-3. Populate `.env` with `DIGITALOCEAN_API_TOKEN` and `GRADIENT_MODEL_ACCESS_KEY` (obtainable in the DigitalOcean UI).
-4. Export the API token in your shell:
+3. Set the required enviornment variables in the .env file (`DIGITALOCEAN_API_TOKEN` and `GRADIENT_MODEL_ACCESS_KEY`). You can obtain both of these tokens via the DigitalOcean UI.
 
-	```
-	export DIGITALOCEAN_API_TOKEN=<your token>   # macOS/Linux
-	set DIGITALOCEAN_API_TOKEN=<your token>      # Windows
-	```
+4. Set your DIGITALOCEAN_API_TOKEN via 
+
+    '''
+    export DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On MacOS/Linux
+    set DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On Windows
+    '''
 
 5. Run the agent locally:
 

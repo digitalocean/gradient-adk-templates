@@ -2,12 +2,9 @@ import os
 from enum import Enum
 from typing import NotRequired, Optional, TypedDict
 
-from dotenv import load_dotenv
 from gradient_adk import entrypoint
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-
-load_dotenv()
 
 
 class State(TypedDict):
@@ -91,7 +88,7 @@ def route_to_spice_check(state: State):
 
 
 llm = ChatOpenAI(
-    base_url="https://inference.do-ai.run/v1",
+    base_url="https://inference.do-ai-test.run/v1",
     model="openai-gpt-oss-120b",
     api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
