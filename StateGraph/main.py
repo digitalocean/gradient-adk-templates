@@ -1,11 +1,9 @@
 import os
 from enum import Enum
-from pprint import pprint
-from typing import Dict, NotRequired, Optional, TypedDict
+from typing import NotRequired, Optional, TypedDict
 
 from dotenv import load_dotenv
 from gradient_adk import entrypoint
-from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
@@ -64,11 +62,9 @@ def polish_joke(state: State):
     return {"final_joke": msg.content}
 
 
-# E D G E S
 def check_punchline(state: State):
-    """Conditional edge function to check if the joke has a punchline"""
+    """Simple check - does the joke contain "?" or "!" """
 
-    # Simple check - does the joke contain "?" or "!"
     if "?" in state["joke"] or "!" in state["joke"]:
         return PunchlineStatus.PASS
     return PunchlineStatus.FAIL
@@ -91,30 +87,7 @@ def check_if_spicy(state: State):
 
 def route_to_spice_check(state: State):
     """No-op node that allows separate spicy routing."""
-
     return {}
-
-
-def _resolve_topic(raw_topic: Optional[str]) -> str:
-    """Return a validated topic, defaulting when absent."""
-
-    if raw_topic is None:
-        return "new years eve"
-    if isinstance(raw_topic, str):
-        topic = raw_topic.strip()
-        if topic:
-            return topic
-    raise ValueError("'topic' must be a non-empty string when provided.")
-
-
-def _resolve_spicy(raw_spicy: Optional[bool]) -> Optional[bool]:
-    """Validate an optional spicy override flag."""
-
-    if raw_spicy is None:
-        return None
-    if isinstance(raw_spicy, bool):
-        return raw_spicy
-    raise ValueError("'spicy' must be a boolean when provided.")
 
 
 llm = ChatOpenAI(
@@ -123,17 +96,9 @@ llm = ChatOpenAI(
     api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
 
-agent = create_agent(
-    llm,
-    # tools=[web_search],
-    system_prompt="You are a helpful assistant.",
-)
-
 
 @entrypoint
-async def main(input: Dict, context: Dict):
-    """Entrypoint"""
-
+async def main(input):
     # Setup the graph
     workflow = StateGraph(State)
 
@@ -166,8 +131,8 @@ async def main(input: Dict, context: Dict):
     # Compile and run
     app = workflow.compile()
 
-    topic = _resolve_topic(input.get("topic"))
-    spicy_override = _resolve_spicy(input.get("spicy"))
+    topic = input.get("topic")
+    spicy_override = input.get("spicy")
 
     initial_state = {"topic": topic}
     if spicy_override is not None:
@@ -175,5 +140,4 @@ async def main(input: Dict, context: Dict):
 
     result = await app.ainvoke(initial_state)
 
-    pprint(result)
     return result["final_joke"]

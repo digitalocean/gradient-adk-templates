@@ -92,7 +92,7 @@ An example Gradient ADK agent orchestrated with LangGraph that chains multiple L
 	curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
 		  --header 'Content-Type: application/json' \
 		  --data '{
-			"topic": "Tell me a spicy networking joke"
+			"topic": "Tell me a networking joke"
 		  }'
 	```
 
