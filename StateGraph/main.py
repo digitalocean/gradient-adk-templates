@@ -91,7 +91,7 @@ def route_to_spice_check(state: State):
 
 
 llm = ChatOpenAI(
-    base_url="https://inference.do-ai-test.run/v1",
+    base_url="https://inference.do-ai.run/v1",
     model="openai-gpt-oss-120b",
     api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
