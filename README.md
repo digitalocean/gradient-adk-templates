@@ -9,6 +9,7 @@ Templates included:
 - `Crew/` — A Crew AI example that creates a small crew of agents to research news on a topic+date and produce interesting trivia snippets.
 - `WebSearch/` - A simple LangGraph agent that uses a web-search tool.
 - `KnowledgeBaseRAG/` - A simple LangGraph agent that queries your DigitalOcean built Knowledge Base.
+- `Streaming_and_Tools/` - A LangGraph agent that uses a web-search tool and streams back responses
 
 Each template directory includes a `main.py` (the ADK entrypoint) and a `requirements.txt`. See the README in each template for details and quickstart instructions:
 
@@ -17,5 +18,5 @@ Each template directory includes a `main.py` (the ADK entrypoint) and a `require
 - `Crew/README.md` — details for the Crew AI trivia generator and its search tool.
 - `WebSearch/README.md` — details for the WebSearch agent.
 - `KnowledgeBaseRAG/README.md` — details for the Agent that queries your DigitalOcean Knowledge Base.
-
+- `Streaming_and_Tools/README.md` - details for the agent that uses a search tool and streams responses.
 
