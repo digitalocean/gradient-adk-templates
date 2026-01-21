@@ -1,0 +1,10 @@
+gradient-adk
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+openai>=1.50.0
+pydantic>=2.6,<3
+python-dotenv
+httpx
+typing_extensions
