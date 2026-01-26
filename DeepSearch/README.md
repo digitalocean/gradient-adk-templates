@@ -1,218 +1,327 @@
-# DeepSearch Agent
+# DeepSearch - Research Agent with Human-in-the-Loop
 
-A comprehensive research agent that conducts multi-step web research and produces detailed reports with citations. This agent features a human-in-the-loop planning phase where users can interactively refine the research plan through natural conversation before autonomous execution.
+A comprehensive research agent that conducts multi-step web research and produces detailed reports with citations. Features human-in-the-loop plan approval and parallel section research using LangGraph's advanced features.
 
-This is a LangGraph port of Google ADK's [DeepSearch agent](https://github.com/google/adk-samples/tree/main/python/agents/deep-search), adapted for the Gradient ADK platform with Serper for web search.
+Based on [Google ADK's DeepSearch agent](https://github.com/google/adk-samples/tree/main/python/agents/deep-search), adapted for the DigitalOcean Gradient AI Platform with Serper for web search.
 
-## Overview
+## Use Case
 
-The DeepSearch agent operates in two phases:
+Build a research assistant that creates thorough, well-cited reports on any topic. The agent first generates a research plan for your approval, then executes parallel research across multiple sections before composing the final report.
 
-### Phase 1: Plan & Refine (Human-in-the-Loop)
+**When to use this template:**
+- You need comprehensive research with human oversight
+- You're building workflows that require human-in-the-loop (HITL) interactions
+- You need a reference for parallel task execution in LangGraph
 
-1. **Generate Plan**: Agent creates a research plan with specific goals tagged as `[RESEARCH]` or `[DELIVERABLE]`
-2. **User Review**: Plan is presented to user for approval
-3. **Natural Conversation**: User responds naturally - the agent interprets intent:
-   - "Looks good, let's proceed" → Approve and start research
-   - "Add more focus on X" → Refine the plan
-   - "What about Y?" → Address question and update plan
-4. **Iterate**: Continue refining until user approves
+## Key Concepts
 
-**Nothing proceeds without explicit user approval.**
+**Human-in-the-loop (HITL)** workflows pause execution to get user input before proceeding. This template uses LangGraph's `interrupt()` function to present a research plan and wait for approval. The user can approve, request changes, or ask questions - and the agent interprets natural language responses to determine the next action. State persistence via `thread_id` allows the conversation to span multiple API calls.
 
-### Phase 2: Autonomous Research Pipeline (Parallel Execution)
-
-1. **Section Planning**: Converts approved plan into report sections with search queries
-2. **Parallel Section Research**: ALL sections are researched simultaneously using LangGraph's Send API:
-   - Fan-out: Each section dispatched as independent parallel task
-   - Execute search queries via Serper API
-   - Analyze and synthesize findings concurrently
-   - Fan-in: Results automatically collected via reducer
-3. **Consolidation**: Aggregate all parallel results and sources
-4. **Report Composition**: Synthesize all findings into a well-cited markdown report
+**Parallel execution** dramatically speeds up research by processing multiple sections simultaneously. After the plan is approved, the agent uses LangGraph's `Send` API to dispatch research tasks for each section concurrently (fan-out). Results are automatically collected using annotated reducers (fan-in), then consolidated into the final report. This pattern is essential for any workflow where independent subtasks can run in parallel.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         PHASE 1: PLANNING                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────────┐    ┌─────────────┐    ┌──────────────┐               │
-│  │ Generate     │───▶│   Human     │───▶│   Refine     │               │
-│  │ Plan         │    │   Review    │    │   Plan       │               │
-│  └──────────────┘    └──────┬──────┘    └──────┬───────┘               │
-│                             │                   │                       │
-│                     approve │                   │ feedback              │
-│                             ▼                   ▼                       │
-│                      ┌──────────────────────────┐                       │
-│                      │     (loop until approve) │                       │
-│                      └──────────────────────────┘                       │
-│                                                                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│               PHASE 2: PARALLEL RESEARCH PIPELINE                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────────┐         FAN-OUT (Send API)                           │
-│  │    Plan      │    ┌─────────────────────────┐                       │
-│  │   Sections   │───▶│  ┌─────┐ ┌─────┐ ┌─────┐│                       │
-│  └──────────────┘    │  │ S1  │ │ S2  │ │ S3  ││  (parallel)           │
-│                      │  └──┬──┘ └──┬──┘ └──┬──┘│                       │
-│                      └─────┼───────┼───────┼───┘                       │
-│                            │       │       │                            │
-│                            ▼       ▼       ▼     FAN-IN (reducer)      │
-│                      ┌─────────────────────────┐                       │
-│                      │     Consolidate         │                       │
-│                      │     Research            │                       │
-│                      └───────────┬─────────────┘                       │
-│                                  │                                      │
-│                                  ▼                                      │
-│                      ┌──────────────┐                                   │
-│                      │   Compose    │                                   │
-│                      │   Report     │                                   │
-│                      └──────────────┘                                   │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 1: PLANNING (Human-in-the-Loop)               │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  Input: { message: "research topic", thread_id? }                      │
+│           │                                                            │
+│           ▼                                                            │
+│  ┌─────────────────┐                                                   │
+│  │  Generate Plan  │                                                   │
+│  │                 │                                                   │
+│  │  Creates goals: │                                                   │
+│  │  [RESEARCH] ... │                                                   │
+│  │  [DELIVERABLE]  │                                                   │
+│  └────────┬────────┘                                                   │
+│           │                                                            │
+│           ▼                                                            │
+│  ┌─────────────────┐         ┌─────────────────┐                       │
+│  │  Human Review   │◄──────▶│   User Input    │                       │
+│  │   (interrupt)   │         │                 │                       │
+│  │                 │         │ "looks good" ───┼──▶ approve           │
+│  │  Waits for      │         │ "add X" ────────┼──▶ refine            │
+│  │  user response  │         │ "why Y?" ───────┼──▶ question          │
+│  └────────┬────────┘         └─────────────────┘                       │
+│           │                                                            │
+│     (if refine)──────────────────────────┐                             │
+│           │                              ▼                             │
+│           │                     ┌─────────────────┐                    │
+│           │                     │   Refine Plan   │                    │
+│           │                     │                 │                    │
+│           │                     │  Updates based  │                    │
+│           │                     │  on feedback    │                    │
+│           │                     └────────┬────────┘                    │
+│           │                              │                             │
+│           │◄─────────────────────────────┘                             │
+│           │                                                            │
+│     (if approved)                                                      │
+│           │                                                            │
+├───────────┼────────────────────────────────────────────────────────────┤
+│           │           PHASE 2: PARALLEL RESEARCH                       │
+├───────────┼────────────────────────────────────────────────────────────┤
+│           ▼                                                            │
+│  ┌─────────────────┐                                                   │
+│  │  Plan Sections  │                                                   │
+│  │                 │                                                   │
+│  │  Converts plan  │                                                   │
+│  │  to report      │                                                   │
+│  │  sections       │                                                   │
+│  └────────┬────────┘                                                   │
+│           │                                                            │
+│           ▼  FAN-OUT (Send API)                                        │
+│  ┌───────────────────────────────────────────────┐                     │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐     │                     │
+│  │  │Section 1 │  │Section 2 │  │Section 3 │ ... │  (parallel)         │
+│  │  │          │  │          │  │          │     │                     │
+│  │  │ Search   │  │ Search   │  │ Search   │     │◄── Serper API       │
+│  │  │ Analyze  │  │ Analyze  │  │ Analyze  │     │                     │
+│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘     │                     │
+│  │       │             │             │           │                     │
+│  └───────┼─────────────┼─────────────┼───────────┘                     │
+│          │             │             │                                 │
+│          └─────────────┼─────────────┘                                 │
+│                        │  FAN-IN (reducer)                             │
+│                        ▼                                               │
+│  ┌─────────────────────────────────────────────┐                       │
+│  │           Consolidate Research              │                       │
+│  │                                             │                       │
+│  │  Aggregates all section results             │                       │
+│  │  Collects sources for citations             │                       │
+│  └────────────────────┬────────────────────────┘                       │
+│                       │                                                │
+│                       ▼                                                │
+│  ┌─────────────────────────────────────────────┐                       │
+│  │            Compose Report                   │                       │
+│  │                                             │                       │
+│  │  Synthesizes findings into markdown         │                       │
+│  │  Adds citations and sources                 │                       │
+│  └────────────────────┬────────────────────────┘                       │
+│                       │                                                │
+│                       ▼                                                │
+│  Output: { report, sources, thread_id }                                │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Features
+## Prerequisites
 
-- **Simple interface** - just `message` and optional `thread_id`, agent interprets intent
-- **Human-in-the-loop planning** using LangGraph interrupts
-- **Parallel section research** using LangGraph Send API for concurrent execution
-- **Automatic result aggregation** via Annotated reducers (operator.add)
-- **Comprehensive logging** for visibility into agent progress
-- **State persistence** via thread_id for multi-turn interactions
-- **Citation tracking** with source attribution in final reports
+- Python 3.10+
+- DigitalOcean account
+- Serper API key ([get one free](https://serper.dev/api-keys))
 
-## Quickstart
+### Getting API Keys
 
-### 1. Create and activate a virtual environment
+1. **DigitalOcean API Token**:
+   - Go to [API Settings](https://cloud.digitalocean.com/account/api/tokens)
+   - Generate a new token with read/write access
+
+2. **DigitalOcean Inference Key**:
+   - Go to [GenAI Settings](https://cloud.digitalocean.com/gen-ai)
+   - Create or copy your inference key
+
+3. **Serper API Key**:
+   - Sign up at [serper.dev](https://serper.dev)
+   - Get your free API key from the dashboard
+
+## Setup
+
+### 1. Create Virtual Environment
 
 ```bash
+cd DeepSearch
 python -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate  # On Windows
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 2. Install dependencies
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set up environment variables
-
-Copy the example environment file and fill in your credentials:
+### 3. Configure Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Required environment variables:
-- `DIGITALOCEAN_API_TOKEN`: Your DigitalOcean API token (for deployment)
-- `DIGITALOCEAN_INFERENCE_KEY`: Your DigitalOcean inference key (for LLM inference)
-- `SERPER_API_KEY`: Your Serper API key (for web search) - Get one at [serper.dev](https://serper.dev)
+Edit `.env`:
 
-### 4. Run locally
+```
+DIGITALOCEAN_INFERENCE_KEY=your_inference_key
+SERPER_API_KEY=your_serper_key
+```
+
+## Running Locally
+
+### Start the Agent
 
 ```bash
-export DIGITALOCEAN_API_TOKEN=<your-token>
+export DIGITALOCEAN_API_TOKEN=your_token
 gradient agent run
 ```
 
-### 5. Interactive Usage
+### Interactive Usage
 
-The agent uses a simple, consistent interface:
-
-#### Start New Research
+**Step 1: Start new research**
 
 ```bash
-curl -X POST http://localhost:8080/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Recent advances in quantum computing and their practical applications"
-  }'
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "message": "Recent advances in quantum computing and their practical applications"
+    }'
 ```
 
-Or with your own thread_id:
-
-```bash
-curl -X POST http://localhost:8080/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Recent advances in quantum computing and their practical applications",
-    "thread_id": "my-research-123"
-  }'
-```
-
-**Response:**
+Response:
 ```json
 {
-  "thread_id": "abc12345",
-  "phase": "planning",
-  "status": "Plan generated. Awaiting user approval.",
-  "plan": "## Research Plan: Recent advances in quantum computing...\n\n**1. [RESEARCH] Identify current quantum computing hardware developments**\n...",
-  "awaiting_input": true
+    "thread_id": "abc12345",
+    "phase": "planning",
+    "status": "Plan generated. Awaiting user approval.",
+    "plan": "## Research Plan: Quantum Computing...\n\n**1. [RESEARCH] Current hardware developments**\n...",
+    "awaiting_input": true
 }
 ```
 
-#### Continue the Conversation
+**Step 2: Approve or refine the plan**
 
-Use the `thread_id` from the previous response and send your message naturally:
-
-**To approve the plan:**
+To approve:
 ```bash
-curl -X POST http://localhost:8080/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "thread_id": "abc12345",
-    "message": "Looks good, let'\''s proceed with the research"
-  }'
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "thread_id": "abc12345",
+        "message": "Looks good, proceed with the research"
+    }'
 ```
 
-**To request changes:**
+To request changes:
 ```bash
-curl -X POST http://localhost:8080/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "thread_id": "abc12345",
-    "message": "Can you add more focus on quantum error correction? Also remove the section about quantum supremacy."
-  }'
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "thread_id": "abc12345",
+        "message": "Add more focus on quantum error correction and remove the section about quantum supremacy"
+    }'
 ```
 
-**To ask a question:**
-```bash
-curl -X POST http://localhost:8080/run \
-  -H "Content-Type: application/json" \
-  -d '{
+**Step 3: Get the final report**
+
+After approval, the agent researches and returns:
+```json
+{
     "thread_id": "abc12345",
-    "message": "Why did you include a section on quantum cryptography?"
-  }'
+    "phase": "complete",
+    "status": "Research complete!",
+    "report": "# Quantum Computing: Recent Advances...\n\n## Introduction\n...",
+    "sources": [
+        "https://example.com/quantum-article-1",
+        "https://example.com/quantum-article-2"
+    ],
+    "awaiting_input": false
+}
 ```
 
-The agent interprets your natural language to determine whether you want to:
-- **Approve**: "yes", "looks good", "proceed", "let's go", "start the research"
-- **Refine**: "add X", "remove Y", "change Z", "more focus on...", "can you also..."
-- **Question**: Any question about the plan or process
+## Deployment
 
-#### Final Response
+### 1. Configure Agent Name
 
-When research is complete:
+Edit `.gradient/agent.yml`:
+
+```yaml
+agent_name: my-deep-search-agent
+```
+
+### 2. Deploy
+
+```bash
+gradient agent deploy
+```
+
+### 3. Invoke Deployed Agent
+
+```bash
+# Start research
+curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
+    --data '{
+        "message": "Climate change mitigation strategies"
+    }'
+
+# Continue conversation
+curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
+    --data '{
+        "thread_id": "abc12345",
+        "message": "Approved, start the research"
+    }'
+```
+
+## Sample Input/Output
+
+### Research Topic Input
 
 ```json
 {
-  "thread_id": "abc12345",
-  "phase": "complete",
-  "status": "Research complete!",
-  "report": "# Quantum Computing: Recent Advances and Applications\n\n## Introduction\n...",
-  "sources": [
-    "https://example.com/quantum-article-1",
-    "https://example.com/quantum-article-2"
-  ],
-  "awaiting_input": false
+    "message": "The impact of AI on software development practices"
 }
+```
+
+### Planning Phase Output
+
+```json
+{
+    "thread_id": "d4f82a1b",
+    "phase": "planning",
+    "status": "Plan generated. Awaiting user approval.",
+    "plan": "## Research Plan: AI Impact on Software Development\n\n**Summary:** This research will examine how AI tools are transforming coding practices, team dynamics, and software quality.\n\n### Goals:\n\n**1. [RESEARCH] Current AI coding assistants and their adoption rates**\n   Key questions:\n   - What are the leading AI coding tools?\n   - What is the adoption rate among developers?\n   - Which programming languages are best supported?\n\n**2. [RESEARCH] Impact on developer productivity**\n   Key questions:\n   - How much time do AI tools save?\n   - What tasks benefit most from AI assistance?\n   - Are there productivity drawbacks?\n\n**3. [DELIVERABLE] Best practices for AI-assisted development**\n   Key questions:\n   - How should teams integrate AI tools?\n   - What are the security considerations?\n   - How to maintain code quality with AI?\n",
+    "awaiting_input": true
+}
+```
+
+### Final Report Output
+
+```json
+{
+    "thread_id": "d4f82a1b",
+    "phase": "complete",
+    "status": "Research complete!",
+    "report": "# The Impact of AI on Software Development Practices\n\n## Executive Summary\n\nArtificial intelligence is fundamentally reshaping how software is written, reviewed, and maintained...\n\n## 1. Current AI Coding Assistants\n\nThe landscape of AI coding tools has expanded rapidly since 2022...\n\n[Citations: [1], [2], [3]]\n\n## Sources\n\n[1] https://example.com/ai-coding-tools-2024\n[2] https://example.com/developer-productivity-study\n...",
+    "sources": [
+        "https://example.com/ai-coding-tools-2024",
+        "https://example.com/developer-productivity-study",
+        "https://example.com/github-copilot-research"
+    ],
+    "awaiting_input": false
+}
+```
+
+## Project Structure
+
+```
+DeepSearch/
+├── .gradient/
+│   └── agent.yml          # Deployment configuration
+├── agents/
+│   ├── __init__.py
+│   ├── planner.py         # Research plan generation
+│   ├── section_planner.py # Convert plan to sections
+│   ├── researcher.py      # Section research (parallel)
+│   ├── evaluator.py       # Quality assessment
+│   └── composer.py        # Final report composition
+├── tools/
+│   ├── __init__.py
+│   └── serper_search.py   # Web search integration
+├── main.py                 # LangGraph workflow with interrupts
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ## API Reference
@@ -221,155 +330,121 @@ When research is complete:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `message` | string | Yes | Your input (research topic to start, or response to continue) |
-| `thread_id` | string | No | Session ID (optional for new, required for continuing) |
-| `max_section_iterations` | integer | No | Max evaluation iterations per section (default: 2) |
-
-If `thread_id` is not provided or doesn't exist, `message` is treated as a new research topic.
-If `thread_id` exists with an active session, `message` is your response (approve/refine).
+| `message` | string | Yes | Research topic (new) or response (continuing) |
+| `thread_id` | string | No | Session ID for multi-turn conversations |
+| `max_section_iterations` | integer | No | Max research iterations per section (default: 2) |
 
 ### Output Fields
 
 | Field | Description |
 |-------|-------------|
 | `thread_id` | Session ID for continuing the conversation |
-| `phase` | Current workflow phase: "planning", "researching", "composing", "complete" |
+| `phase` | Current phase: `planning`, `researching`, `composing`, `complete` |
 | `status` | Human-readable status message |
 | `plan` | Research plan (during planning phase) |
-| `report` | Final markdown report (when phase="complete") |
+| `report` | Final markdown report (when complete) |
 | `sources` | List of source URLs used |
-| `awaiting_input` | True if waiting for user response |
+| `awaiting_input` | `true` if waiting for user response |
 
-## Logging
+## User Intent Detection
 
-The agent includes comprehensive logging to track progress:
+The agent interprets natural language responses:
 
-```
-2024-01-15 10:30:00 - DeepSearch - INFO - ============================================================
-2024-01-15 10:30:00 - DeepSearch - INFO - PHASE 1: PLANNING
-2024-01-15 10:30:00 - DeepSearch - INFO - ============================================================
-2024-01-15 10:30:00 - DeepSearch - INFO - Generating initial plan for: quantum computing
-2024-01-15 10:30:05 - DeepSearch - INFO - Plan iteration 1 ready for review
-...
-2024-01-15 10:30:15 - DeepSearch - INFO - Received user message: looks good, proceed
-2024-01-15 10:30:16 - DeepSearch - INFO - Classified intent: approve - User explicitly wants to proceed
-2024-01-15 10:30:16 - DeepSearch - INFO - Plan APPROVED by user
-...
-2024-01-15 10:31:00 - DeepSearch - INFO - ============================================================
-2024-01-15 10:31:00 - DeepSearch - INFO - PHASE 2: PARALLEL RESEARCH PIPELINE
-2024-01-15 10:31:00 - DeepSearch - INFO - ============================================================
-2024-01-15 10:31:00 - DeepSearch - INFO - Dispatching 4 sections for parallel research...
-2024-01-15 10:31:00 - DeepSearch - INFO -   -> Section 1: Current Hardware Developments
-2024-01-15 10:31:00 - DeepSearch - INFO -   -> Section 2: Quantum Algorithms
-2024-01-15 10:31:00 - DeepSearch - INFO -   -> Section 3: Practical Applications
-2024-01-15 10:31:00 - DeepSearch - INFO -   -> Section 4: Future Outlook
-2024-01-15 10:31:01 - DeepSearch - INFO - [Section 1] Researching: Current Hardware Developments
-2024-01-15 10:31:01 - DeepSearch - INFO - [Section 2] Researching: Quantum Algorithms
-2024-01-15 10:31:01 - DeepSearch - INFO - [Section 3] Researching: Practical Applications
-2024-01-15 10:31:01 - DeepSearch - INFO - [Section 4] Researching: Future Outlook
-...
-2024-01-15 10:31:30 - DeepSearch - INFO - ============================================================
-2024-01-15 10:31:30 - DeepSearch - INFO - CONSOLIDATING PARALLEL RESEARCH RESULTS
-2024-01-15 10:31:30 - DeepSearch - INFO - ============================================================
-2024-01-15 10:31:30 - DeepSearch - INFO - Received results from 4 sections
-2024-01-15 10:31:30 - DeepSearch - INFO - Total findings: 48
-2024-01-15 10:31:30 - DeepSearch - INFO - Total sources: 32
-2024-01-15 10:31:30 - DeepSearch - INFO - Average quality: 7.5/10
-```
-
-## Deployment
-
-### Update agent configuration
-
-Edit `.gradient/agent.yml` to customize your agent name:
-
-```yaml
-agent_environment: main
-agent_name: my-deep-search-agent
-entrypoint_file: main.py
-```
-
-### Deploy to Gradient
-
-```bash
-gradient agent deploy
-```
-
-### Invoke deployed agent
-
-```bash
-# Start research
-curl -X POST 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <DIGITALOCEAN_API_TOKEN>" \
-  -d '{"message": "Climate change mitigation strategies"}'
-
-# Continue conversation (using thread_id from previous response)
-curl -X POST 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <DIGITALOCEAN_API_TOKEN>" \
-  -d '{"thread_id": "abc12345", "message": "Looks good, start the research"}'
-```
-
-## Project Structure
-
-```
-DeepSearch/
-├── .gradient/
-│   └── agent.yml              # Agent configuration
-├── agents/
-│   ├── __init__.py
-│   ├── planner.py             # Research plan generation & refinement
-│   ├── section_planner.py     # Convert plan to report sections
-│   ├── researcher.py          # Section-based web research
-│   ├── evaluator.py           # Research quality evaluation
-│   └── composer.py            # Final report composition
-├── tools/
-│   ├── __init__.py
-│   └── serper_search.py       # Serper web search integration
-├── main.py                    # LangGraph workflow with interrupts
-├── requirements.txt           # Python dependencies
-├── .env.example               # Environment variables template
-└── README.md                  # This file
-```
+| Intent | Example Phrases |
+|--------|-----------------|
+| **Approve** | "looks good", "proceed", "yes", "let's go", "approved" |
+| **Refine** | "add more about X", "remove Y", "focus on Z", "can you include" |
+| **Question** | "why did you include X?", "what about Y?" |
 
 ## Customization
 
 ### Adjusting Research Depth
 
-Control how many times the evaluator can request more research per section:
+Control iterations per section:
 
 ```json
 {
-  "topic": "Your topic",
-  "max_section_iterations": 3
+    "message": "Quantum computing advances",
+    "max_section_iterations": 3
 }
 ```
 
-### Modifying Prompts
+### Modifying the Planning Prompt
 
-The agent prompts are defined in each agent module:
-- `agents/planner.py`: `PLAN_GENERATOR_PROMPT`, `PLAN_REFINEMENT_PROMPT`
-- `agents/section_planner.py`: `SECTION_PLANNER_PROMPT`
-- `agents/researcher.py`: `RESEARCHER_PROMPT`
-- `agents/evaluator.py`: `SECTION_EVALUATOR_PROMPT`
-- `agents/composer.py`: `COMPOSER_PROMPT`
-- `main.py`: Intent classification prompt in `classify_user_intent()`
+Edit `agents/planner.py`:
 
-### Changing Models
+```python
+PLAN_GENERATOR_PROMPT = """You are an expert research planner...
 
-By default, the agent uses `openai-gpt-4.1` via DigitalOcean's inference endpoint. To change models, modify the `ChatOpenAI` initialization in each agent module.
+# Add custom instructions
+Always include a section on:
+- Historical context
+- Current state of the art
+- Future predictions
 
-## State Management
+Research Topic: {topic}
+"""
+```
 
-The agent uses LangGraph's `MemorySaver` checkpointer to persist state across requests. This enables:
+### Changing Search Parameters
 
-- Multi-turn planning conversations
-- Session recovery (using the same `thread_id`)
-- Progress tracking during long-running research
+Edit `tools/serper_search.py`:
 
-**Note:** The default `MemorySaver` is in-memory and state is lost when the agent restarts. For production deployments, consider using a persistent checkpointer like `SqliteSaver` or `PostgresSaver`.
+```python
+def serper_search(query: str, num_results: int = 10) -> SearchResults:
+    # Increase results per query
+    # Add date filtering
+    params = {
+        "q": query,
+        "num": num_results,
+        "tbs": "qdr:y"  # Last year only
+    }
+```
 
-## Credits
+### Adding Custom Research Steps
 
-This agent is a LangGraph port of Google's [ADK DeepSearch agent](https://github.com/google/adk-samples/tree/main/python/agents/deep-search), adapted for the Gradient ADK platform with Serper for web search.
+Extend the workflow in `main.py`:
+
+```python
+# Add a fact-checking node
+def fact_check_node(state: DeepSearchState) -> dict:
+    """Verify key claims in the research."""
+    # Fact-checking logic
+    return {"fact_check_results": results}
+
+workflow.add_node("fact_check", fact_check_node)
+workflow.add_edge("consolidate_research", "fact_check")
+workflow.add_edge("fact_check", "compose_report")
+```
+
+## State Persistence
+
+The agent uses LangGraph's `MemorySaver` for state persistence:
+
+- **In-memory by default**: State is lost when agent restarts
+- **Production recommendation**: Use `PostgresSaver` or `SqliteSaver`
+
+```python
+from langgraph.checkpoint.postgres import PostgresSaver
+
+# Replace MemorySaver with PostgresSaver
+memory = PostgresSaver.from_conn_string(os.environ["DATABASE_URL"])
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Plan is empty" | Check `DIGITALOCEAN_INFERENCE_KEY` is valid |
+| Serper errors | Verify `SERPER_API_KEY` and check rate limits |
+| Thread not found | Ensure you're using the correct `thread_id` |
+| Research takes too long | Reduce `max_section_iterations` |
+| State lost on restart | Use a persistent checkpointer |
+
+## Resources
+
+- [LangGraph Human-in-the-Loop](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/)
+- [LangGraph Send API](https://langchain-ai.github.io/langgraph/how-tos/map-reduce/)
+- [Serper API Documentation](https://serper.dev/docs)
+- [Google ADK DeepSearch](https://github.com/google/adk-samples/tree/main/python/agents/deep-search)
+- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

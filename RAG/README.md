@@ -1,109 +1,312 @@
-# RAG (Retrieval-Augmented Generation) Template
+# RAG - Document Question Answering
 
-This template demonstrates a multi-agent RAG Question Answering agent built with LangGraph and LangChain, that can easily be deployed to DigitalOcean's Gradient AI platform. It uses an in-memory retriever (over local PDFs) as a tool and has dedicated sub agents to rewrite queries and generate answers. This agent graph is defined in `main.py` and the ADK entrypoint is exposed via the `@entrypoint` decorator.
+A multi-agent Retrieval-Augmented Generation (RAG) system for question answering over PDF documents. Built with LangGraph and LangChain, deployable on the DigitalOcean Gradient AI Platform.
 
+## Use Case
 
-Key features
-- Multi-node LangGraph workflow that decides whether to retrieve documents or respond directly
-- In-memory retriever created via `tools.doc_retriever.create_retriever` (points at `./pdfs` by default)
-- Dedicated agents to rewrite the query for better retrieval results and answer generation 
-- All agents use DigitalOcean Gradient AI's serverless inference capabilities for the underlying LLMs.
+Build an AI assistant that answers questions using your own documents as the knowledge source. This template demonstrates document retrieval, query optimization, and answer generation with citations.
 
+**When to use this template:**
+- You need to answer questions from a document collection
+- You want to build a knowledge base chatbot
+- You need query rewriting for better retrieval
 
-## Agent Graph
+## Key Concepts
+
+**Retrieval-Augmented Generation (RAG)** enhances LLM responses by fetching relevant documents before answering. Instead of relying solely on training data, the agent searches a vector index of your documents, retrieves the most relevant passages, and uses them as context for generating accurate, grounded responses with citations.
+
+**Query rewriting** improves retrieval quality when initial results are poor. If the retrieved documents don't answer the question well, the agent reformulates the query with different terms or more specific phrasing, then retries the search. This multi-step approach handles ambiguous or complex questions more effectively than single-pass retrieval.
+
+## Architecture
+
+```
+                              ┌───────────┐
+                              │  __start__│
+                              └─────┬─────┘
+                                    │
+                                    ▼
+                     ┌──────────────────────────────┐
+                     │  generate_query_or_respond   │
+                     │                              │
+                     │  Decides: retrieve docs or   │
+                     │  answer directly?            │
+                     └──────────────┬───────────────┘
+                            ┌───────┴───────┐
+                            │               │
+                    (needs docs)      (can answer)
+                            │               │
+                            ▼               │
+                     ┌──────────┐           │
+                     │ retrieve │           │
+                     │          │           │
+                     │ Vector   │           │
+                     │ search   │           │
+                     └────┬─────┘           │
+                          │                 │
+              ┌───────────┴───────────┐     │
+              │                       │     │
+        (good docs)             (poor docs) │
+              │                       │     │
+              ▼                       ▼     │
+    ┌─────────────────┐    ┌─────────────────┐
+    │ generate_answer │    │ rewrite_question│
+    │                 │    │                 │
+    │ Write response  │    │ Better query    │
+    │ with citations  │    │ for retrieval   │
+    └────────┬────────┘    └────────┬────────┘
+             │                      │
+             │              (retry retrieval)
+             │                      │
+             ▼                      ▼
+                     ┌───────────┐
+                     │  __end__  │
+                     └───────────┘
 ```
 
-                                  +-----------+                         
-                                  | __start__ |                         
-                                  +-----------+                         
-                                        *                               
-                                        *                               
-                                        *                               
-                          +---------------------------+                 
-                          | generate_query_or_respond |                 
-                          +---------------------------+                 
-                       .....            *            .....              
-                  .....                 *                 .....         
-               ...                      *                      .....    
-    +----------+                        *                           ... 
-    | retrieve |..                      *                             . 
-    +----------+  .....                 *                             . 
-          .            .....            *                             . 
-          .                 .....       *                             . 
-          .                      ...    *                             . 
-+-----------------+           +------------------+                  ... 
-| generate_answer |           | rewrite_question |             .....    
-+-----------------+****       +------------------+        .....         
-                       *****                         .....              
-                            *****               .....                   
-                                 ***         ...                        
-                                  +---------+                           
-                                  | __end__ |                           
-                                  +---------+                         
+## Prerequisites
+
+- Python 3.10+
+- DigitalOcean account
+- OpenAI API key (for embeddings)
+- PDF documents to index
+
+### Getting API Keys
+
+1. **DigitalOcean API Token**:
+   - Go to [API Settings](https://cloud.digitalocean.com/account/api/tokens)
+   - Generate a new token with read/write access
+
+2. **DigitalOcean Inference Key**:
+   - Go to [GenAI Settings](https://cloud.digitalocean.com/gen-ai)
+   - Create or copy your inference key
+
+3. **OpenAI API Key** (for embeddings):
+   - Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
+   - Create a new API key
+
+> Note: OpenAI is required because DigitalOcean GenAI Serverless Inference does not yet support embedding models. The LLM inference still uses DigitalOcean.
+
+## Setup
+
+### 1. Create Virtual Environment
+
+```bash
+cd RAG
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-## Quickstart 
+### 2. Install Dependencies
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-    `pip install -r requirements.txt`
+### 3. Configure Environment
 
-3. Set the required enviornment variables in the .env file (`OPENAI_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). Note that both an OpenAI API key and a serverless inference key are required, because the Gradient AI platform does not yet support serverless embeddings. The OpenAI key is used to construct embeddings for the data that is indexed. 
+```bash
+cp .env.example .env
+```
 
-4. Copy over all the PDFs you want to your agent to index into the `./pdfs` folder. The template provides some fact sheets about the Hubble Space Telescope by default.
+Edit `.env` with your credentials:
 
-5. Set your DIGITALOCEAN_API_TOKEN via 
+```
+DIGITALOCEAN_INFERENCE_KEY=your_inference_key
+OPENAI_API_KEY=your_openai_key
+```
 
-    ```
-    export DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On MacOS/Linux
-    set DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On Windows
-    ```
+### 4. Add Your Documents
 
-5. Run your agent locally via
+Copy PDF files to the `pdfs/` folder:
 
-    `gradient agent run`
+```bash
+cp /path/to/your/documents/*.pdf ./pdfs/
+```
 
-    You can invoke it with
-    ```
-    curl --location 'http://localhost:8080/run' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "prompt" : {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": "What is the difference between the STIS and the COS?"
-                        }
-                    ]
+The template includes sample Hubble Space Telescope fact sheets by default.
+
+## Running Locally
+
+### Start the Agent
+
+```bash
+export DIGITALOCEAN_API_TOKEN=your_token
+gradient agent run
+```
+
+### Test with curl
+
+```bash
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "prompt": {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is the difference between the STIS and the COS?"
                 }
-        }'
-    ```
+            ]
+        }
+    }'
+```
 
-6. Change the name of the agent if you need to in `.gradient/agent.yaml` and then deploy with 
+## Deployment
 
-    ```
-    gradient agent deploy
-    ```
+### 1. Configure Agent Name
 
-    You can the invoke the agent via the same curl command, just using your deployed agent's URL instead
-    
-    ```
-    curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "prompt" : {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": "What is the difference between the STIS and the COS?"
-                        }
-                    ]
+Edit `.gradient/agent.yml`:
+
+```yaml
+agent_name: my-rag-agent
+```
+
+### 2. Deploy
+
+```bash
+gradient agent deploy
+```
+
+### 3. Invoke Deployed Agent
+
+```bash
+curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
+    --data '{
+        "prompt": {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is the difference between the STIS and the COS?"
                 }
-        }'
-    ```
+            ]
+        }
+    }'
+```
 
-## Notes
-- The retriever uses a local PDF folder by default. If you need a persistent vector store or large-scale index, replace the in-memory retriever in `tools/doc_retriever.py` with a supported vector DB.
-- Make sure you set BOTH `OPENAI_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY` environment variables.
-- If you need to upload a very large number of documents, consider using a dedicated vector DB that is separately deployed. You may run into memory constraints otherwise.
+## Sample Input/Output
+
+### Input
+
+```json
+{
+    "prompt": {
+        "messages": [
+            {
+                "role": "user",
+                "content": "What instruments does Hubble use to observe ultraviolet light?"
+            }
+        ]
+    }
+}
+```
+
+### Output
+
+```json
+{
+    "response": "Hubble uses two primary instruments for ultraviolet observations:\n\n1. **Cosmic Origins Spectrograph (COS)**: Installed in 2009, COS is optimized for observing faint ultraviolet emissions from distant sources like quasars and intergalactic gas.\n\n2. **Space Telescope Imaging Spectrograph (STIS)**: A versatile instrument that can observe in ultraviolet, visible, and near-infrared wavelengths, often used for studying planetary atmospheres and stellar winds.\n\nBoth instruments take advantage of Hubble's position above Earth's atmosphere, which blocks most ultraviolet light from reaching ground-based telescopes.",
+    "sources": [
+        "hubble_cos_factsheet.pdf",
+        "hubble_stis_factsheet.pdf"
+    ]
+}
+```
+
+## Project Structure
+
+```
+RAG/
+├── .gradient/
+│   └── agent.yml          # Deployment configuration
+├── agents/
+│   ├── __init__.py
+│   ├── grader.py          # Document relevance evaluation
+│   ├── rewriter.py        # Query reformulation
+│   └── answer_writer.py   # Response generation
+├── tools/
+│   ├── __init__.py
+│   └── doc_retriever.py   # PDF loading and vector search
+├── pdfs/                   # Your PDF documents
+│   └── *.pdf
+├── main.py                 # LangGraph workflow
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+## Customization
+
+### Using a Different Vector Store
+
+Replace the in-memory retriever in `tools/doc_retriever.py`:
+
+```python
+from langchain_community.vectorstores import Pinecone
+
+def create_retriever():
+    # Use Pinecone for persistent storage
+    vectorstore = Pinecone.from_existing_index(
+        index_name="my-index",
+        embedding=OpenAIEmbeddings()
+    )
+    return vectorstore.as_retriever(search_kwargs={"k": 5})
+```
+
+### Changing the Embedding Model
+
+Modify `tools/doc_retriever.py` to use a different embedding:
+
+```python
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+```
+
+### Adjusting Retrieval Parameters
+
+Change the number of documents retrieved:
+
+```python
+retriever = vectorstore.as_retriever(
+    search_type="similarity",
+    search_kwargs={"k": 10}  # Retrieve 10 documents instead of default
+)
+```
+
+### Adding Document Sources
+
+Support additional file types by modifying the loader:
+
+```python
+from langchain_community.document_loaders import DirectoryLoader, TextLoader
+
+# Load both PDFs and text files
+loader = DirectoryLoader(
+    "./documents",
+    glob="**/*.*",
+    loader_cls=TextLoader
+)
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "No documents found" | Check that PDFs exist in the `pdfs/` folder |
+| Embedding errors | Verify your `OPENAI_API_KEY` is set correctly |
+| Poor retrieval results | Try adding more context to your question |
+| Memory issues | Reduce the number/size of PDFs or use an external vector DB |
+
+## Limitations
+
+- **In-memory storage**: Document index is rebuilt on each restart. For production, use a persistent vector store.
+- **PDF only**: The default loader only supports PDF files.
+- **Embedding costs**: Each document is embedded using OpenAI, which incurs API costs.
+
+## Resources
+
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [LangChain RAG Guide](https://python.langchain.com/docs/tutorials/rag/)
+- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

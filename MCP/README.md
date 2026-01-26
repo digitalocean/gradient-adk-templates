@@ -1,60 +1,361 @@
-# ADK Agents that use Tools via MCP
+# MCP - Model Context Protocol Integration
 
-This example demonstrates an ADK agent that connects to tools exposed via MCP servers. Two of the common challenges that LLMs face are their inability to know about events that transpired after their cutoff dates, and being unable to perform complex mathematical calculations with high levels of accuracy. 
+An agent that connects to external tools via the Model Context Protocol (MCP). This template demonstrates how to use both cloud-hosted and local MCP servers to extend LLM capabilities with web search and precise calculations.
 
-This example agent enhances an LLM with the ability to both search the web, and use a calculator inorder to overcome those limitations. The example `main.py` creates a `MultiServerMCPClient` with two tool endpoints:
+## Use Case
 
-- `search` — the [Tavily MCP server](https://docs.tavily.com/documentation/mcp), which is a cloud-hosted remote MCP server that enables LLMs to search the web
-- `calculator` — a locally running MCP tool invoked with a `python -m mcp_server_calculator` command
+Connect your agent to external tools and services using the standardized Model Context Protocol. This template shows how to overcome common LLM limitations - lack of current information and mathematical accuracy - by integrating Tavily search and a calculator via MCP.
 
-The runtime builds a LangGraph `StateGraph` where the model is bound to the tools discovered from the MCP client and will call them when appropriate. The agent is powered by DigitalOcean Gradient AI's serverless inference capabilties. 
+**When to use this template:**
+- You want to use MCP-compatible tools
+- You need to connect to external services via a standard protocol
+- You're building agents that require precise calculations or real-time data
 
+## Key Concepts
 
-## Quickstart 
+**Model Context Protocol (MCP)** is an open standard for connecting LLMs to external tools and data sources. Instead of writing custom integrations for each tool, MCP provides a unified protocol that any compatible server can implement. This means you can easily swap tools, combine multiple services, and benefit from a growing ecosystem of MCP-compatible servers.
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+This template demonstrates both **remote and local MCP servers**. Remote servers (like Tavily search) are cloud-hosted services accessed via HTTP, while local servers (like the calculator) run as subprocesses on the same machine. LangChain's `MultiServerMCPClient` connects to multiple servers simultaneously, exposing all their tools to your agent through a single interface.
 
-    pip install -r Templates/MCP/requirements.txt
+## Architecture
 
-3. Set the required enviornment variables in the .env file (`TAVILY_API_KEY` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain a Tavily API key for free at [this link](https://app.tavily.com/home). 
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         MCP Agent                                     │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  Input: { prompt }                                                    │
+│           │                                                           │
+│           ▼                                                           │
+│  ┌────────────────────────────────────┐                              │
+│  │          LLM (GPT-4.1)             │                              │
+│  │                                    │                              │
+│  │  Bound to MCP tools:               │                              │
+│  │  - tavily_search                   │                              │
+│  │  - calculator                      │                              │
+│  └──────────────┬─────────────────────┘                              │
+│                 │                                                     │
+│         (selects tool)                                                │
+│         ┌───────┴───────┐                                            │
+│         │               │                                            │
+│         ▼               ▼                                            │
+│  ┌────────────────┐  ┌────────────────┐                             │
+│  │ Tavily Search  │  │  Calculator    │                             │
+│  │ (Remote MCP)   │  │  (Local MCP)   │                             │
+│  │                │  │                │                             │
+│  │ Cloud-hosted   │  │ python -m      │                             │
+│  │ web search     │  │ mcp_server_    │                             │
+│  │ service        │  │ calculator     │                             │
+│  └───────┬────────┘  └───────┬────────┘                             │
+│          │                   │                                       │
+│          └─────────┬─────────┘                                       │
+│                    │                                                  │
+│                    ▼                                                  │
+│  ┌────────────────────────────────────┐                              │
+│  │          LLM (GPT-4.1)             │                              │
+│  │                                    │                              │
+│  │  Synthesizes tool results          │                              │
+│  │  into final answer                 │                              │
+│  └──────────────┬─────────────────────┘                              │
+│                 │                                                     │
+│                 ▼                                                     │
+│  Output: Answer combining search + calculation                        │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
-4. Set your DIGITALOCEAN_API_TOKEN via 
+## Prerequisites
 
-    '''
-    export DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On MacOS/Linux
-    set DIGITALOCEAN_API_TOKEN=<Your DigitalOcean API Token> # On Windows
-    '''
+- Python 3.10+
+- DigitalOcean account
+- Tavily API key ([get one free](https://app.tavily.com/home))
 
-5. Run your agent locally via
+### Getting API Keys
 
-    `gradient agent run`
+1. **DigitalOcean API Token**:
+   - Go to [API Settings](https://cloud.digitalocean.com/account/api/tokens)
+   - Generate a new token with read/write access
 
-    You can invoke it with
-    ```
-    curl --location 'http://localhost:8080/run' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "prompt" : {
-                "messages" : "What is sqrt(5) + sqrt(7) times the age of the current pope?"
-            }
-        }'
-    ```
+2. **DigitalOcean Inference Key**:
+   - Go to [GenAI Settings](https://cloud.digitalocean.com/gen-ai)
+   - Create or copy your inference key
 
-6. Change the name of the agent if you need to in `gradient/agent.yaml` and then deploy with 
+3. **Tavily API Key**:
+   - Sign up at [tavily.com](https://app.tavily.com/home)
+   - Get your free API key from the dashboard
 
-    ```
-    gradient agent deploy
-    ```
+## Setup
 
-    You can the invoke the agent via the same curl command, just using your deployed agent's URL instead
-    
-    ```
-    curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "prompt" : {
-                "messages" : "What is sqrt(5) + sqrt(7) times the age of the current pope?"
-            }
-        }'
-    ```
+### 1. Create Virtual Environment
+
+```bash
+cd MCP
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```
+DIGITALOCEAN_INFERENCE_KEY=your_inference_key
+TAVILY_API_KEY=your_tavily_key
+```
+
+## Running Locally
+
+### Start the Agent
+
+```bash
+export DIGITALOCEAN_API_TOKEN=your_token
+gradient agent run
+```
+
+### Test with curl
+
+**Query requiring both web search and calculation:**
+
+```bash
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "prompt": {
+            "messages": "What is sqrt(5) + sqrt(7) times the age of the current pope?"
+        }
+    }'
+```
+
+**Web search only:**
+
+```bash
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "prompt": {
+            "messages": "What are the latest developments in quantum computing?"
+        }
+    }'
+```
+
+**Calculation only:**
+
+```bash
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "prompt": {
+            "messages": "Calculate 15% compound interest on $10,000 over 5 years"
+        }
+    }'
+```
+
+## Deployment
+
+### 1. Configure Agent Name
+
+Edit `.gradient/agent.yml`:
+
+```yaml
+agent_name: my-mcp-agent
+```
+
+### 2. Deploy
+
+```bash
+gradient agent deploy
+```
+
+### 3. Invoke Deployed Agent
+
+```bash
+curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
+    --data '{
+        "prompt": {
+            "messages": "What is sqrt(5) + sqrt(7) times the age of the current pope?"
+        }
+    }'
+```
+
+## Sample Input/Output
+
+### Input
+
+```json
+{
+    "prompt": {
+        "messages": "What is sqrt(5) + sqrt(7) times the age of the current pope?"
+    }
+}
+```
+
+### Output
+
+```json
+{
+    "response": "Let me break this down:\n\n1. First, I searched for the current pope's age. Pope Francis was born on December 17, 1936, making him 88 years old.\n\n2. Now for the calculation:\n   - sqrt(5) ≈ 2.236\n   - sqrt(7) ≈ 2.646\n   - sqrt(5) + sqrt(7) ≈ 4.882\n   - 4.882 × 88 ≈ 429.62\n\nTherefore, sqrt(5) + sqrt(7) times the age of the current pope is approximately **429.62**."
+}
+```
+
+## Project Structure
+
+```
+MCP/
+├── .gradient/
+│   └── agent.yml          # Deployment configuration
+├── main.py                 # MCP client setup and agent
+├── requirements.txt        # Dependencies
+├── .env.example           # Environment template
+└── README.md
+```
+
+## Code Walkthrough
+
+### Setting Up MCP Clients
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+mcp_client = MultiServerMCPClient({
+    "search": {
+        "url": "https://mcp.tavily.com/mcp",
+        "transport": "streamable-http",
+        "headers": {"Authorization": f"Bearer {tavily_api_key}"}
+    },
+    "calculator": {
+        "command": "python",
+        "args": ["-m", "mcp_server_calculator"],
+        "transport": "stdio"
+    }
+})
+```
+
+### Creating the Agent with MCP Tools
+
+```python
+from langchain_gradient import ChatGradient
+from langgraph.prebuilt import create_react_agent
+
+# Get tools from MCP servers
+tools = await mcp_client.get_tools()
+
+# Create agent with MCP tools
+llm = ChatGradient(model="openai-gpt-4.1")
+agent = create_react_agent(llm, tools)
+```
+
+## Customization
+
+### Adding More MCP Servers
+
+Extend the MCP client configuration:
+
+```python
+mcp_client = MultiServerMCPClient({
+    "search": {...},
+    "calculator": {...},
+    # Add a weather service
+    "weather": {
+        "url": "https://mcp.weather-api.com/mcp",
+        "transport": "streamable-http",
+        "headers": {"Authorization": f"Bearer {weather_api_key}"}
+    },
+    # Add a local database tool
+    "database": {
+        "command": "python",
+        "args": ["-m", "my_db_mcp_server"],
+        "transport": "stdio"
+    }
+})
+```
+
+### Creating Your Own MCP Server
+
+Build a custom MCP server:
+
+```python
+# my_mcp_server.py
+from mcp.server import Server
+from mcp.types import Tool
+
+server = Server("my-tools")
+
+@server.tool()
+async def my_custom_tool(query: str) -> str:
+    """Description of what this tool does."""
+    # Your tool implementation
+    return result
+
+if __name__ == "__main__":
+    server.run()
+```
+
+Then add it to your agent:
+
+```python
+mcp_client = MultiServerMCPClient({
+    "my_tools": {
+        "command": "python",
+        "args": ["my_mcp_server.py"],
+        "transport": "stdio"
+    }
+})
+```
+
+### Using Only Remote MCP Servers
+
+For serverless deployment, use only remote MCP servers:
+
+```python
+mcp_client = MultiServerMCPClient({
+    "search": {
+        "url": "https://mcp.tavily.com/mcp",
+        "transport": "streamable-http",
+        "headers": {"Authorization": f"Bearer {api_key}"}
+    }
+    # Local servers with "command" won't work in serverless
+})
+```
+
+## MCP Server Types
+
+| Type | Transport | Use Case |
+|------|-----------|----------|
+| Remote HTTP | `streamable-http` | Cloud-hosted services (Tavily, etc.) |
+| Local Process | `stdio` | Python packages, local scripts |
+| WebSocket | `ws` | Real-time bidirectional communication |
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Cannot connect to MCP server" | Check the server URL and API key |
+| Local MCP server not starting | Ensure the package is installed (`pip install mcp-server-calculator`) |
+| Tool not found | Verify the MCP server exposes the expected tools |
+| Timeout errors | Remote MCP servers may need longer timeouts |
+
+## Notes
+
+- Local MCP servers (using `command`) require the package to be installed
+- Remote MCP servers are preferred for serverless deployment
+- MCP is an open standard - check [modelcontextprotocol.io](https://modelcontextprotocol.io) for compatible servers
+
+## Resources
+
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [MCP Servers Directory](https://github.com/modelcontextprotocol/servers)
+- [LangChain MCP Adapters](https://github.com/langchain-ai/langchain-mcp-adapters)
+- [Tavily MCP Documentation](https://docs.tavily.com/documentation/mcp)
+- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
