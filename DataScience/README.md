@@ -5,6 +5,7 @@ A data science agent built with Gradient ADK and LangGraph that can query databa
 ## Features
 
 - **Natural Language to SQL (NL2SQL)**: Ask questions in plain English and get SQL queries automatically generated and executed
+- **Auto-Retry with Self-Healing**: If a SQL query fails, the agent automatically analyzes the error and retries with a corrected query (configurable, default: 5 retries)
 - **Data Analysis**: Perform statistical analysis and data exploration with Python code execution
 - **Visualizations**: Generate charts and graphs from your data
 - **Multi-Database Support**: Works with PostgreSQL and MySQL on DigitalOcean Managed Databases
@@ -81,7 +82,7 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `GRADIENT_MODEL_ACCESS_KEY`: Your Gradient model access key
+- `DIGITALOCEAN_INFERENCE_KEY`: Your Gradient model access key
 - `DB_TYPE`: `postgres` or `mysql`
 - `DB_HOST`: Database hostname
 - `DB_PORT`: Database port
@@ -125,6 +126,24 @@ if result.get("images"):
         # Base64 encoded PNG
         print(f"Image saved to: {img['path']}")
         # img['base64'] contains the base64-encoded image data
+```
+
+### Query Retry Configuration
+
+If a generated SQL query fails, the agent will automatically attempt to fix and retry it. By default, it retries up to 5 times.
+
+```python
+# Configure max retries (default: 5)
+result = main({
+    "message": "Show me the average revenue per customer segment",
+    "max_query_retries": 3  # Retry up to 3 times on failure
+})
+
+# Disable retries
+result = main({
+    "message": "List all flights",
+    "max_query_retries": 0  # No retries, fail immediately on error
+})
 ```
 
 ### Example Questions

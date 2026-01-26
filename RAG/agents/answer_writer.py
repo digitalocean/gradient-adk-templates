@@ -1,5 +1,5 @@
 from langgraph.graph import MessagesState
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 GENERATE_PROMPT = (
     "You are an assistant for question-answering tasks. "
@@ -10,10 +10,8 @@ GENERATE_PROMPT = (
     "Context: {context}"
 )
 
-answer_model = ChatOpenAI(
+answer_model = ChatGradient(
     model="openai-gpt-4.1",
-    base_url="https://inference.do-ai.run/v1",
-    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
     temperature=0
 )
 

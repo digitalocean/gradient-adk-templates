@@ -2,7 +2,7 @@ import os
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph, MessagesState, START
 from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from dotenv import load_dotenv
 from typing import Dict, Optional
 from gradient_adk import entrypoint
@@ -11,10 +11,8 @@ load_dotenv()
 
 AGENT_GRAPH: Optional[StateGraph] = None
 
-model = ChatOpenAI(
+model = ChatGradient(
     model="openai-gpt-4.1",
-    base_url="https://inference.do-ai.run/v1",
-    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY")
 )
 
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")

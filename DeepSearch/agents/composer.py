@@ -2,7 +2,7 @@ import os
 import logging
 from typing import List, Dict
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +50,8 @@ class FinalReport(BaseModel):
 
 
 def get_composer_model():
-    return ChatOpenAI(
+    return ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0.4
     )
 

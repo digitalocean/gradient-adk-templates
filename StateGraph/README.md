@@ -55,7 +55,7 @@ An example Gradient ADK agent orchestrated with LangGraph that chains multiple L
     pip install -r requirements.txt
     ```
 
-3. Set the required enviornment variables in the .env file (`DIGITALOCEAN_API_TOKEN` and `GRADIENT_MODEL_ACCESS_KEY`). You can obtain both of these tokens via the DigitalOcean UI.
+3. Set the required enviornment variables in the .env file (`DIGITALOCEAN_API_TOKEN` and `DIGITALOCEAN_INFERENCE_KEY`). You can obtain both of these tokens via the DigitalOcean UI.
 
 4. Set your DIGITALOCEAN_API_TOKEN via 
 

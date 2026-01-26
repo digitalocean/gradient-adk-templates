@@ -1,7 +1,7 @@
 import os
 from gradient_adk import entrypoint
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from langchain_core.messages import HumanMessage
 from langchain.agents import create_agent
 from pydantic import BaseModel
@@ -18,10 +18,8 @@ def web_search(query: str) -> str:
     return results
 
 
-llm = ChatOpenAI(
-    base_url="https://inference.do-ai.run/v1",
+llm = ChatGradient(
     model="openai-gpt-oss-120b",
-    api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
 
 agent = create_agent(

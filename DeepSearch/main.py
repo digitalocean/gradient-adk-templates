@@ -30,7 +30,7 @@ from gradient_adk import entrypoint
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt, Command, Send
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -131,10 +131,8 @@ class UserIntent(BaseModel):
 
 
 def get_intent_classifier():
-    return ChatOpenAI(
+    return ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0
     )
 
@@ -313,10 +311,8 @@ def research_section_node(state: SectionResearchState) -> dict:
 
     logger.info(f"[Section {section_index + 1}] Researching: {section_title}")
 
-    researcher_model = ChatOpenAI(
+    researcher_model = ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0.2
     )
 
@@ -623,32 +619,44 @@ async def main(input: Dict, context: Dict) -> Dict:
         logger.info(f"Resuming session {thread_id} with message: {message[:100]}...")
 
         # Resume the graph with the user's message
-        result = None
-        for event in deep_search_graph.stream(Command(resume=message), config, stream_mode="values"):
-            result = event
-            logger.info(f"State update: phase={event.get('phase')}, status={event.get('status_message')}")
+        try:
+            result = deep_search_graph.invoke(Command(resume=message), config)
+            logger.info(f"Graph resumed - phase={result.get('phase')}, status={result.get('status_message')}")
+        except Exception as e:
+            logger.error(f"Error during graph resumption: {str(e)}")
+            return {
+                "thread_id": thread_id,
+                "phase": "error",
+                "status": f"Error resuming research: {str(e)}",
+                "plan": "",
+                "awaiting_input": False
+            }
 
-        # Check final state
+        # Get the current state from the checkpointer
         final_state = deep_search_graph.get_state(config)
+        if final_state and final_state.values:
+            state_values = final_state.values
+        else:
+            state_values = result if result else {}
 
         # Check if research is complete
-        if result and result.get("phase") == WorkflowPhase.COMPLETE.value:
+        if state_values.get("phase") == WorkflowPhase.COMPLETE.value:
             return {
                 "thread_id": thread_id,
                 "phase": "complete",
                 "status": "Research complete!",
-                "report": result.get("markdown_report", ""),
-                "sources": list(result.get("all_sources", {}).keys()),
+                "report": state_values.get("markdown_report", ""),
+                "sources": list(state_values.get("all_sources", {}).keys()),
                 "awaiting_input": False
             }
 
         # Still in planning or another phase
         return {
             "thread_id": thread_id,
-            "phase": result.get("phase", "planning") if result else "unknown",
-            "status": result.get("status_message", "") if result else "",
-            "plan": result.get("plan_display", "") if result else "",
-            "awaiting_input": bool(final_state.next)
+            "phase": state_values.get("phase", "planning"),
+            "status": state_values.get("status_message", ""),
+            "plan": state_values.get("plan_display", ""),
+            "awaiting_input": bool(final_state.next) if final_state else False
         }
 
     # Case 2: Starting new research (message is the topic)
@@ -681,16 +689,32 @@ async def main(input: Dict, context: Dict) -> Dict:
     }
 
     # Run until interrupt (plan review)
-    result = None
-    for event in deep_search_graph.stream(initial_state, config, stream_mode="values"):
-        result = event
-        logger.info(f"State update: phase={event.get('phase')}, status={event.get('status_message')}")
+    try:
+        result = deep_search_graph.invoke(initial_state, config)
+        logger.info(f"Graph executed - phase={result.get('phase')}, status={result.get('status_message')}")
+    except Exception as e:
+        logger.error(f"Error during graph execution: {str(e)}")
+        return {
+            "thread_id": thread_id,
+            "phase": "error",
+            "status": f"Error generating research plan: {str(e)}",
+            "plan": "",
+            "awaiting_input": False
+        }
+
+    # Get the current state from the checkpointer
+    final_state = deep_search_graph.get_state(config)
+    if final_state and final_state.values:
+        state_values = final_state.values
+        logger.info(f"Final state retrieved - plan_display length: {len(state_values.get('plan_display', ''))}")
+    else:
+        state_values = result if result else {}
 
     # Return the plan for review
     return {
         "thread_id": thread_id,
-        "phase": result.get("phase", "planning") if result else "planning",
-        "status": result.get("status_message", "") if result else "",
-        "plan": result.get("plan_display", "") if result else "",
+        "phase": state_values.get("phase", "planning"),
+        "status": state_values.get("status_message", ""),
+        "plan": state_values.get("plan_display", ""),
         "awaiting_input": True
     }

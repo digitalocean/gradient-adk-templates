@@ -4,5 +4,5 @@ langchain
 langchain-core
 gradient
 langchain-community 
-langchain_openai
+langchain-gradient
 pypdf

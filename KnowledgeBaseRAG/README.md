@@ -11,7 +11,7 @@ This example demonstrates an ADK agent that connects to a DigitalOcean Knowledge
 
     pip install -r requirements.txt
 
-3. Set the required enviornment variables in the .env file (`DIGITALOCEAN_API_TOKEN`, `GRADIENT_MODEL_ACCESS_KEY`, and `DIGITALOCEAN_KB_ID`). You can obtain both of these tokens via the DigitalOcean UI.
+3. Set the required enviornment variables in the .env file (`DIGITALOCEAN_API_TOKEN`, `DIGITALOCEAN_INFERENCE_KEY`, and `DIGITALOCEAN_KB_ID`). You can obtain both of these tokens via the DigitalOcean UI.
 
 4. Set your DIGITALOCEAN_API_TOKEN (with genai:* and project:read scopes) via 
 

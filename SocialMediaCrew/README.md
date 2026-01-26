@@ -107,7 +107,7 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `GRADIENT_MODEL_ACCESS_KEY`: Your Gradient model access key (for LLM and image generation)
+- `DIGITALOCEAN_INFERENCE_KEY`: Your Gradient model access key (for LLM and image generation)
 - `SERPER_API_KEY`: Serper API key for web search
 
 ### 3. Deploy to Gradient

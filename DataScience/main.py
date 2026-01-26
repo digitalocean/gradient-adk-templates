@@ -14,7 +14,7 @@ import os
 import logging
 from typing import TypedDict, Optional, List, Literal, Annotated
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from gradient_adk import entrypoint
@@ -32,15 +32,15 @@ logger = logging.getLogger(__name__)
 
 # Model configuration
 MODEL = "openai-gpt-4.1"
-BASE_URL = "https://inference.do-ai.run/v1"
+
+# Query retry configuration
+DEFAULT_MAX_QUERY_RETRIES = 5
 
 
-def get_model(temperature: float = 0.0) -> ChatOpenAI:
-    """Get a ChatOpenAI instance configured for Gradient."""
-    return ChatOpenAI(
+def get_model(temperature: float = 0.0) -> ChatGradient:
+    """Get a ChatGradient instance."""
+    return ChatGradient(
         model=MODEL,
-        base_url=BASE_URL,
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=temperature
     )
 
@@ -70,6 +70,9 @@ class DataScienceState(TypedDict, total=False):
     """State for the data science workflow."""
     # Input
     message: str
+
+    # Configuration
+    max_query_retries: int  # Max retries for failed SQL queries (default: 5)
 
     # Intent classification
     intent: str  # "query", "analyze", "visualize", "schema", "help"
@@ -178,17 +181,18 @@ def connect_database(state: DataScienceState) -> DataScienceState:
 
 
 def execute_query(state: DataScienceState) -> DataScienceState:
-    """Execute NL2SQL query."""
+    """Execute NL2SQL query with automatic retry on failure."""
     message = state["message"]
+    max_retries = state.get("max_query_retries", DEFAULT_MAX_QUERY_RETRIES)
 
     try:
         db = get_db_connection()
     except Exception as e:
         return {**state, "error": f"No database connection: {str(e)}"}
 
-    logger.info(f"Executing NL2SQL for: {message[:100]}...")
+    logger.info(f"Executing NL2SQL for: {message[:100]}... (max retries: {max_retries})")
 
-    result = execute_nl2sql(message, db)
+    result = execute_nl2sql(message, db, max_retries=max_retries)
 
     if result.success:
         logger.info(f"Query returned {result.row_count} rows")
@@ -198,7 +202,7 @@ def execute_query(state: DataScienceState) -> DataScienceState:
             "query_data": result.data
         }
     else:
-        logger.error(f"Query failed: {result.error}")
+        logger.error(f"Query failed after retries: {result.error}")
         return {
             **state,
             "query_result": result,
@@ -539,10 +543,8 @@ def create_workflow():
     return workflow
 
 
-# Create workflow and compile with checkpointer
 workflow = create_workflow()
-checkpointer = MemorySaver()
-app = workflow.compile(checkpointer=checkpointer)
+app = workflow.compile()
 
 
 # =============================================================================
@@ -558,12 +560,13 @@ def main(input: dict) -> dict:
         input: Dictionary with:
             - message: User's natural language question or request
             - thread_id: Optional thread ID for conversation continuity
+            - max_query_retries: Optional max retries for failed SQL queries (default: 5)
 
     Returns:
         Response dictionary with summary, data, and any visualizations
     """
     message = input.get("message", "")
-    thread_id = input.get("thread_id")
+    max_query_retries = input.get("max_query_retries", DEFAULT_MAX_QUERY_RETRIES)
 
     if not message:
         return {
@@ -574,10 +577,12 @@ def main(input: dict) -> dict:
 
     logger.info(f"Processing request: {message[:100]}...")
 
-    config = {"configurable": {"thread_id": thread_id or "default"}}
-
     # Run the workflow
-    result = app.invoke({"message": message}, config=config)
+    initial_state = {
+        "message": message,
+        "max_query_retries": max_query_retries
+    }
+    result = app.invoke(initial_state)
 
     # Extract response
     response = result.get("response")

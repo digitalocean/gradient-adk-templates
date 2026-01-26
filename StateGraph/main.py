@@ -30,7 +30,7 @@ DEFAULT_MODEL = "openai-gpt-oss-120b"
 
 
 inference_client = AsyncGradient(
-    model_access_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
+    model_access_key=os.environ.get("DIGITALOCEAN_INFERENCE_KEY"),
 )
 
 

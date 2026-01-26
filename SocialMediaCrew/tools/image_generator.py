@@ -28,9 +28,9 @@ class ImageGenerationResult(BaseModel):
 
 def get_api_key() -> str:
     """Get the Gradient Model Access Key."""
-    key = os.environ.get("GRADIENT_MODEL_ACCESS_KEY")
+    key = os.environ.get("DIGITALOCEAN_INFERENCE_KEY")
     if not key:
-        raise ValueError("GRADIENT_MODEL_ACCESS_KEY environment variable not set")
+        raise ValueError("DIGITALOCEAN_INFERENCE_KEY environment variable not set")
     return key
 
 

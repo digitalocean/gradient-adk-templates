@@ -112,7 +112,7 @@ cp .env.example .env
 
 Required environment variables:
 - `DIGITALOCEAN_API_TOKEN`: Your DigitalOcean API token (for deployment)
-- `GRADIENT_MODEL_ACCESS_KEY`: Your Gradient model access key (for LLM inference)
+- `DIGITALOCEAN_INFERENCE_KEY`: Your DigitalOcean inference key (for LLM inference)
 - `SERPER_API_KEY`: Your Serper API key (for web search) - Get one at [serper.dev](https://serper.dev)
 
 ### 4. Run locally

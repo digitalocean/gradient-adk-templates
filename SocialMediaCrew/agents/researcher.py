@@ -9,7 +9,7 @@ import os
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 from tools.web_search import (
     search_trending_topics,
@@ -22,15 +22,12 @@ logger = logging.getLogger(__name__)
 
 # Model configuration
 MODEL = "openai-gpt-4.1"
-BASE_URL = "https://inference.do-ai.run/v1"
 
 
-def get_model(temperature: float = 0.3) -> ChatOpenAI:
-    """Get a ChatOpenAI instance configured for Gradient."""
-    return ChatOpenAI(
+def get_model(temperature: float = 0.3) -> ChatGradient:
+    """Get a ChatGradient instance."""
+    return ChatGradient(
         model=MODEL,
-        base_url=BASE_URL,
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=temperature
     )
 

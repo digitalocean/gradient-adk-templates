@@ -16,21 +16,18 @@ from typing import Optional, Dict, Any, List
 from pathlib import Path
 from pydantic import BaseModel, Field
 from contextlib import redirect_stdout, redirect_stderr
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 logger = logging.getLogger(__name__)
 
 # Model configuration
 MODEL = "openai-gpt-4.1"
-BASE_URL = "https://inference.do-ai.run/v1"
 
 
-def get_model(temperature: float = 0.0) -> ChatOpenAI:
-    """Get a ChatOpenAI instance configured for Gradient."""
-    return ChatOpenAI(
+def get_model(temperature: float = 0.0) -> ChatGradient:
+    """Get a ChatGradient instance."""
+    return ChatGradient(
         model=MODEL,
-        base_url=BASE_URL,
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=temperature
     )
 

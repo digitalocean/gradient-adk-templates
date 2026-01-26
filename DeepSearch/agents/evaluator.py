@@ -2,7 +2,7 @@ import os
 import logging
 from typing import List, Literal
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +44,8 @@ class SectionEvaluation(BaseModel):
 
 
 def get_evaluator_model():
-    return ChatOpenAI(
+    return ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0.1
     )
 
@@ -168,10 +166,8 @@ def enhanced_section_research(state: dict) -> dict:
 
     logger.info(f"Performing enhanced research for section '{section_title}'")
 
-    researcher_model = ChatOpenAI(
+    researcher_model = ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0.2
     )
 

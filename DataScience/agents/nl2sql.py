@@ -9,21 +9,18 @@ import os
 import logging
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 logger = logging.getLogger(__name__)
 
 # Model configuration
 MODEL = "openai-gpt-4.1"
-BASE_URL = "https://inference.do-ai.run/v1"
 
 
-def get_model(temperature: float = 0.0) -> ChatOpenAI:
-    """Get a ChatOpenAI instance configured for Gradient."""
-    return ChatOpenAI(
+def get_model(temperature: float = 0.0) -> ChatGradient:
+    """Get a ChatGradient instance."""
+    return ChatGradient(
         model=MODEL,
-        base_url=BASE_URL,
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=temperature
     )
 
@@ -134,13 +131,20 @@ def generate_sql(question: str, schema_info: Dict[str, Any]) -> SQLQuery:
     return sql_query
 
 
-def execute_nl2sql(question: str, db_connection) -> QueryResult:
+def execute_nl2sql(
+    question: str,
+    db_connection,
+    max_retries: int = 5
+) -> QueryResult:
     """
     Complete NL2SQL pipeline: translate question, execute query, format results.
+
+    If the query fails, the agent will attempt to fix and retry up to max_retries times.
 
     Args:
         question: Natural language question
         db_connection: Database connection instance
+        max_retries: Maximum number of retry attempts for failed queries (default: 5)
 
     Returns:
         Query result with data and formatted output
@@ -151,22 +155,84 @@ def execute_nl2sql(question: str, db_connection) -> QueryResult:
         # Get schema information
         schema_info = db_connection.get_schema_info()
 
-        # Generate SQL query
+        # Generate initial SQL query
         sql_query = generate_sql(question, schema_info)
+        current_query = sql_query.query
+        current_explanation = sql_query.explanation
 
-        # Execute the query
-        result = db_connection.execute_query(sql_query.query)
+        # Track all attempts for debugging
+        attempts = []
 
-        # Format the results
-        formatted = format_results_as_table(result)
+        for attempt in range(max_retries + 1):  # +1 for initial attempt
+            try:
+                logger.info(f"Executing query (attempt {attempt + 1}/{max_retries + 1}): {current_query[:100]}...")
 
+                # Execute the query
+                result = db_connection.execute_query(current_query)
+
+                # Format the results
+                formatted = format_results_as_table(result)
+
+                if attempt > 0:
+                    logger.info(f"Query succeeded after {attempt + 1} attempts")
+
+                return QueryResult(
+                    success=True,
+                    query=current_query,
+                    explanation=current_explanation,
+                    data=result,
+                    formatted_result=formatted,
+                    row_count=result["row_count"]
+                )
+
+            except Exception as query_error:
+                error_msg = str(query_error)
+                attempts.append({
+                    "attempt": attempt + 1,
+                    "query": current_query,
+                    "error": error_msg
+                })
+
+                logger.warning(f"Query attempt {attempt + 1} failed: {error_msg}")
+
+                # If we have retries left, try to fix the query
+                if attempt < max_retries:
+                    logger.info(f"Attempting to fix query (retry {attempt + 1}/{max_retries})...")
+                    try:
+                        fixed_query = validate_and_fix_sql(
+                            current_query,
+                            error_msg,
+                            schema_info
+                        )
+                        current_query = fixed_query.query
+                        current_explanation = fixed_query.explanation
+                        logger.info(f"Generated fixed query: {current_query[:100]}...")
+                    except Exception as fix_error:
+                        logger.error(f"Failed to generate fixed query: {fix_error}")
+                        # Continue to next iteration, which will fail if this was the last retry
+                else:
+                    # All retries exhausted
+                    logger.error(f"All {max_retries + 1} attempts failed")
+
+                    # Build detailed error message
+                    error_details = f"Query failed after {max_retries + 1} attempts.\n\n"
+                    error_details += "Attempt history:\n"
+                    for att in attempts:
+                        error_details += f"  Attempt {att['attempt']}: {att['error'][:100]}...\n"
+
+                    return QueryResult(
+                        success=False,
+                        query=current_query,
+                        explanation=current_explanation,
+                        error=error_details
+                    )
+
+        # Should not reach here, but just in case
         return QueryResult(
-            success=True,
-            query=sql_query.query,
-            explanation=sql_query.explanation,
-            data=result,
-            formatted_result=formatted,
-            row_count=result["row_count"]
+            success=False,
+            query=current_query,
+            explanation=current_explanation,
+            error="Query execution failed unexpectedly"
         )
 
     except Exception as e:

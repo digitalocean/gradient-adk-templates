@@ -2,7 +2,7 @@ import os
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +52,8 @@ class ResearchPlan(BaseModel):
 
 
 def get_planner_model():
-    return ChatOpenAI(
+    return ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
-        api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
         temperature=0.3
     )
 
@@ -89,21 +87,50 @@ def generate_initial_plan(state: dict) -> dict:
     topic = state.get("topic", "")
     logger.info(f"Generating initial research plan for topic: {topic}")
 
-    planner_model = get_planner_model()
-    structured_model = planner_model.with_structured_output(ResearchPlan)
+    if not topic:
+        logger.error("No topic provided for research plan generation")
+        return {
+            "research_plan": None,
+            "plan_display": "Error: No research topic provided.",
+            "plan_approved": False,
+            "plan_iteration": 1
+        }
 
-    prompt = PLAN_GENERATOR_PROMPT.format(topic=topic)
-    plan = structured_model.invoke([{"role": "user", "content": prompt}])
+    try:
+        planner_model = get_planner_model()
+        structured_model = planner_model.with_structured_output(ResearchPlan)
 
-    plan_display = format_plan_for_display(plan)
-    logger.info(f"Generated plan with {len(plan.goals)} goals")
+        prompt = PLAN_GENERATOR_PROMPT.format(topic=topic)
+        logger.info(f"Invoking LLM for plan generation...")
+        plan = structured_model.invoke([{"role": "user", "content": prompt}])
 
-    return {
-        "research_plan": plan,
-        "plan_display": plan_display,
-        "plan_approved": False,
-        "plan_iteration": 1
-    }
+        if not plan or not plan.goals:
+            logger.warning("LLM returned empty or invalid plan")
+            return {
+                "research_plan": None,
+                "plan_display": "Error: Failed to generate a valid research plan. Please try again.",
+                "plan_approved": False,
+                "plan_iteration": 1
+            }
+
+        plan_display = format_plan_for_display(plan)
+        logger.info(f"Generated plan with {len(plan.goals)} goals")
+
+        return {
+            "research_plan": plan,
+            "plan_display": plan_display,
+            "plan_approved": False,
+            "plan_iteration": 1
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating research plan: {str(e)}")
+        return {
+            "research_plan": None,
+            "plan_display": f"Error generating research plan: {str(e)}",
+            "plan_approved": False,
+            "plan_iteration": 1
+        }
 
 
 def refine_plan(state: dict) -> dict:
@@ -122,23 +149,52 @@ def refine_plan(state: dict) -> dict:
 
     logger.info(f"Refining plan (iteration {iteration + 1}) based on feedback: {feedback[:100]}...")
 
-    planner_model = get_planner_model()
-    structured_model = planner_model.with_structured_output(ResearchPlan)
+    if not current_plan:
+        logger.error("No current plan to refine")
+        return {
+            "research_plan": None,
+            "plan_display": "Error: No existing plan to refine.",
+            "plan_iteration": iteration + 1,
+            "user_feedback": ""
+        }
 
-    current_plan_text = format_plan_for_display(current_plan)
-    prompt = PLAN_REFINEMENT_PROMPT.format(
-        current_plan=current_plan_text,
-        feedback=feedback
-    )
+    try:
+        planner_model = get_planner_model()
+        structured_model = planner_model.with_structured_output(ResearchPlan)
 
-    refined_plan = structured_model.invoke([{"role": "user", "content": prompt}])
-    plan_display = format_plan_for_display(refined_plan)
+        current_plan_text = format_plan_for_display(current_plan)
+        prompt = PLAN_REFINEMENT_PROMPT.format(
+            current_plan=current_plan_text,
+            feedback=feedback
+        )
 
-    logger.info(f"Refined plan now has {len(refined_plan.goals)} goals")
+        logger.info(f"Invoking LLM for plan refinement...")
+        refined_plan = structured_model.invoke([{"role": "user", "content": prompt}])
 
-    return {
-        "research_plan": refined_plan,
-        "plan_display": plan_display,
-        "plan_iteration": iteration + 1,
-        "user_feedback": ""  # Clear feedback after processing
-    }
+        if not refined_plan or not refined_plan.goals:
+            logger.warning("LLM returned empty or invalid refined plan")
+            return {
+                "research_plan": current_plan,  # Keep the original plan
+                "plan_display": format_plan_for_display(current_plan) + "\n\n*Note: Failed to apply refinement. Original plan preserved.*",
+                "plan_iteration": iteration + 1,
+                "user_feedback": ""
+            }
+
+        plan_display = format_plan_for_display(refined_plan)
+        logger.info(f"Refined plan now has {len(refined_plan.goals)} goals")
+
+        return {
+            "research_plan": refined_plan,
+            "plan_display": plan_display,
+            "plan_iteration": iteration + 1,
+            "user_feedback": ""  # Clear feedback after processing
+        }
+
+    except Exception as e:
+        logger.error(f"Error refining plan: {str(e)}")
+        return {
+            "research_plan": current_plan,  # Keep the original plan
+            "plan_display": format_plan_for_display(current_plan) if current_plan else f"Error refining plan: {str(e)}",
+            "plan_iteration": iteration + 1,
+            "user_feedback": ""
+        }
