@@ -322,31 +322,6 @@ def punchline_check(state: JokeState) -> str:
     return "end"
 ```
 
-### Adding Parallel Branches
-
-Execute multiple improvements in parallel:
-
-```python
-from langgraph.graph import Send
-
-def fan_out_improvements(state: JokeState):
-    return [
-        Send("improve_timing", state),
-        Send("improve_wording", state),
-        Send("improve_surprise", state)
-    ]
-
-workflow.add_conditional_edges("generate_joke", fan_out_improvements)
-```
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Empty joke output | Check that `DIGITALOCEAN_INFERENCE_KEY` is set |
-| Graph not routing correctly | Add logging to router functions to debug |
-| Jokes aren't funny | Try adjusting the prompts in node functions |
-
 ## Resources
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)

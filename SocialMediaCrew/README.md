@@ -20,24 +20,24 @@ Automate social media content creation with AI. This template demonstrates a pro
 ## Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
+┌─────────────────────────────────────────────────────────────────────────┐
 │                       Social Media Crew Pipeline                        │
-├────────────────────────────────────────────────────────────────────────┤
+├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  Input: { topic, platform, content_type }                               │
 │           │                                                             │
 │           ▼                                                             │
-│  ┌─────────────────┐                                                   │
-│  │   Researcher    │◄──── Serper Web Search                            │
+│  ┌─────────────────┐                                                    │
+│  │   Researcher    │◄────▶ Serper Web Search                           │
 │  │                 │                                                    │
 │  │ - Trend research│                                                    │
 │  │ - Key insights  │                                                    │
 │  │ - Viral hooks   │                                                    │
-│  └────────┬────────┘                                                   │
+│  └────────┬────────┘                                                    │
 │           │                                                             │
 │           ▼                                                             │
-│  ┌─────────────────┐                                                   │
-│  │   Copywriter    │◄───────────────────────────┐                      │
+│  ┌─────────────────┐                                                    │
+│  │   Copywriter    │◄────────────────────────────┐                      │
 │  │                 │                             │                      │
 │  │ - Draft content │                             │ revision             │
 │  │ - Hooks & CTAs  │                             │ feedback             │
@@ -59,20 +59,20 @@ Automate social media content creation with AI. This template demonstrates a pro
 │  │ - Quality score │                                                    │
 │  │ - Brand safety  │                                                    │
 │  │ - Viral check   │                                                    │
-│  └────────┬────────┘                                                   │
+│  └────────┬────────┘                                                    │
 │           │ (approved)                                                  │
 │           ▼                                                             │
-│  ┌─────────────────┐    ┌─────────────────┐                            │
-│  │ Image Prompt    │───▶│ Image Generator │                            │
-│  │ Designer        │    │                 │                            │
-│  │                 │    │ fal fast-sdxl   │                            │
-│  │ - Art direction │    │ via DO GenAI    │                            │
-│  └─────────────────┘    └────────┬────────┘                            │
+│  ┌─────────────────┐    ┌─────────────────┐                             │
+│  │ Image Prompt    │──▶│ Image Generator │                             │
+│  │ Designer        │    │                 │                             │
+│  │                 │    │ fal fast-sdxl   │                             │
+│  │ - Art direction │    │ via Gradient    │                             │
+│  └─────────────────┘    └────────┬────────┘                             │
 │                                  │                                      │
 │                                  ▼                                      │
-│  Output: { post, hashtags, image, metrics }                            │
+│  Output: { post, hashtags, image, metrics }                             │
 │                                                                         │
-└────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -244,7 +244,7 @@ curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
         "summary": "Strong hook with personal credibility, actionable tips"
     },
     "image": {
-        "url": "https://fal.media/files/...",
+        "url": "https://.......", // Images generated with fal are available at a URL
         "prompt": "minimalist home office with laptop and coffee, morning sunlight, clean aesthetic",
         "art_style": "digital illustration"
     }
@@ -321,32 +321,7 @@ PLATFORM_GUIDELINES = {
 Edit `tools/image_generator.py`:
 
 ```python
-def generate_image(prompt: str) -> dict:
-    # Use a different model
-    response = client.run(
-        "fal-ai/flux/dev",  # Different model
-        arguments={
-            "prompt": prompt,
-            "image_size": "square_hd"
-        }
-    )
-    return response
-```
-
-### Adjusting the Review Criteria
-
-Edit `agents/reviewer.py`:
-
-```python
-REVIEW_CRITERIA = {
-    "quality_threshold": 7,  # Minimum score to approve
-    "max_revisions": 5,      # Max revision attempts
-    "required_elements": [
-        "hook",
-        "value_proposition",
-        "call_to_action"
-    ]
-}
+MODEL_ID = "fal-ai/flux/schnell",  # Use a different image generation model
 ```
 
 ### Disabling Image Generation

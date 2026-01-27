@@ -22,12 +22,12 @@ This template uses CrewAI's role-based agent pattern: a Researcher agent gathers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Crew AI Workflow                      │
+│                    Crew AI Workflow                     │
 ├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  Input: { date, topic }                                  │
-│           │                                              │
-│           ▼                                              │
+│                                                         │
+│  Input: { date, topic }                                 │
+│           │                                             │
+│           ▼                                             │
 │  ┌─────────────────────┐                                │
 │  │   News Researcher   │                                │
 │  │                     │                                │
@@ -35,8 +35,8 @@ This template uses CrewAI's role-based agent pattern: a Researcher agent gathers
 │  │  - Finds articles   │                                │
 │  │  - Extracts facts   │                                │
 │  └──────────┬──────────┘                                │
-│             │ context                                    │
-│             ▼                                            │
+│             │ context                                   │
+│             ▼                                           │
 │  ┌─────────────────────┐                                │
 │  │  Trivia Generator   │                                │
 │  │                     │                                │
@@ -44,10 +44,10 @@ This template uses CrewAI's role-based agent pattern: a Researcher agent gathers
 │  │  - Creates trivia   │                                │
 │  │  - Adds sources     │                                │
 │  └──────────┬──────────┘                                │
-│             │                                            │
-│             ▼                                            │
+│             │                                           │
+│             ▼                                           │
 │  Output: 5 trivia facts with sources                    │
-│                                                          │
+│                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 

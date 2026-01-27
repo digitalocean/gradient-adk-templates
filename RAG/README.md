@@ -21,47 +21,75 @@ Build an AI assistant that answers questions using your own documents as the kno
 
 ```
                               ┌───────────┐
-                              │  __start__│
+                              │   Start   │
                               └─────┬─────┘
                                     │
                                     ▼
                      ┌──────────────────────────────┐
                      │  generate_query_or_respond   │
                      │                              │
-                     │  Decides: retrieve docs or   │
-                     │  answer directly?            │
+                     │  LLM decides: retrieve docs  │
+                     │  or answer directly?         │
                      └──────────────┬───────────────┘
                             ┌───────┴───────┐
                             │               │
                     (needs docs)      (can answer)
                             │               │
                             ▼               │
-                     ┌──────────┐           │
-                     │ retrieve │           │
-                     │          │           │
-                     │ Vector   │           │
-                     │ search   │           │
-                     └────┬─────┘           │
-                          │                 │
-              ┌───────────┴───────────┐     │
-              │                       │     │
-        (good docs)             (poor docs) │
-              │                       │     │
-              ▼                       ▼     │
-    ┌─────────────────┐    ┌─────────────────┐
-    │ generate_answer │    │ rewrite_question│
-    │                 │    │                 │
-    │ Write response  │    │ Better query    │
-    │ with citations  │    │ for retrieval   │
-    └────────┬────────┘    └────────┬────────┘
-             │                      │
-             │              (retry retrieval)
-             │                      │
-             ▼                      ▼
-                     ┌───────────┐
-                     │  __end__  │
-                     └───────────┘
+                     ┌──────────────┐       │
+                     │   retrieve   │       │
+                     │              │       │
+                     │ Vector search│◄──────────────────────┐
+                     │ for relevant │       │               │
+                     │ documents    │       │               │
+                     └──────┬───────┘       │               │
+                            │               │               │
+                            ▼               │               │
+                     ┌──────────────┐       │               │
+                     │    grade     │       │               │
+                     │              │       │               │
+                     │ LLM evaluates│       │               │
+                     │ if docs are  │       │               │
+                     │ relevant to  │       │               │
+                     │ the question │       │               │
+                     └──────┬───────┘       │               │
+                            │               │               │
+              ┌─────────────┴─────────┐     │               │
+              │                       │     │               │
+        (relevant)              (not relevant)              │
+              │                       │                     │
+              │                       ▼                     │
+              │          ┌─────────────────┐                │
+              │          │ rewrite_question│                │
+              │          │                 │                │
+              │          │ LLM reformulates│                │
+              │          │ query for better│────────────────┘
+              │          │ retrieval       │  (retry with
+              │          └─────────────────┘   new query)
+              │                       │
+              └───────────┬───────────┘
+                          │
+                          ▼
+                ┌─────────────────┐
+                │ generate_answer │
+                │                 │
+                │ LLM writes      │
+                │ response with   │
+                │ citations       │
+                └────────┬────────┘
+                         │
+                         ▼
+                  ┌───────────┐
+                  │    End    │
+                  └───────────┘
 ```
+
+The workflow uses **LLMs at each decision point**:
+1. **generate_query_or_respond**: LLM decides if retrieval is needed or if it can answer directly
+2. **retrieve**: Vector search fetches potentially relevant documents
+3. **grade**: LLM evaluates whether retrieved documents actually answer the question
+4. **rewrite_question**: If documents aren't relevant, LLM reformulates the query and loops back to retrieve
+5. **generate_answer**: LLM synthesizes the final response with citations from relevant documents
 
 ## Prerequisites
 
@@ -237,6 +265,11 @@ RAG/
 ```
 
 ## Customization
+
+### Change the Documents
+
+Sample documents are included in `/pdfs`. You can swap these documents out for your documents and have the agent answer questions on your data.
+
 
 ### Using a Different Vector Store
 

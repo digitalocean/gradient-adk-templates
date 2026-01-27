@@ -21,48 +21,49 @@ This template demonstrates both **remote and local MCP servers**. Remote servers
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                         MCP Agent                                     │
+│                         MCP Agent                                    │
 ├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Input: { prompt }                                                    │
-│           │                                                           │
-│           ▼                                                           │
+│                                                                      │
+│  Input: { prompt }                                                   │
+│           │                                                          │
+│           ▼                                                          │
 │  ┌────────────────────────────────────┐                              │
-│  │          LLM (GPT-4.1)             │                              │
-│  │                                    │                              │
-│  │  Bound to MCP tools:               │                              │
-│  │  - tavily_search                   │                              │
-│  │  - calculator                      │                              │
-│  └──────────────┬─────────────────────┘                              │
-│                 │                                                     │
-│         (selects tool)                                                │
-│         ┌───────┴───────┐                                            │
-│         │               │                                            │
-│         ▼               ▼                                            │
-│  ┌────────────────┐  ┌────────────────┐                             │
-│  │ Tavily Search  │  │  Calculator    │                             │
-│  │ (Remote MCP)   │  │  (Local MCP)   │                             │
-│  │                │  │                │                             │
-│  │ Cloud-hosted   │  │ python -m      │                             │
-│  │ web search     │  │ mcp_server_    │                             │
-│  │ service        │  │ calculator     │                             │
-│  └───────┬────────┘  └───────┬────────┘                             │
-│          │                   │                                       │
-│          └─────────┬─────────┘                                       │
-│                    │                                                  │
-│                    ▼                                                  │
-│  ┌────────────────────────────────────┐                              │
-│  │          LLM (GPT-4.1)             │                              │
-│  │                                    │                              │
-│  │  Synthesizes tool results          │                              │
-│  │  into final answer                 │                              │
-│  └──────────────┬─────────────────────┘                              │
-│                 │                                                     │
-│                 ▼                                                     │
-│  Output: Answer combining search + calculation                        │
-│                                                                       │
+│  │          LLM (GPT-4.1)             │◄─────────────────────┐       │
+│  │                                    │                      │       │
+│  │  Bound to MCP tools:               │                      │       │
+│  │  - tavily_search                   │            tool      │       │
+│  │  - calculator                      │            results   │       │
+│  │                                    │                      │       │
+│  │  The LLM decides:                  │                      │       │
+│  │  1. Which tool(s) to call          │                      │       │
+│  │  2. When to stop and respond       │                      │       │
+│  └──────────────┬─────────────────────┘                      │       │
+│                 │                                            │       │
+│         (calls tool)                                         │       │
+│         ┌───────┴───────┐                                    │       │
+│         │               │                                    │       │
+│         ▼               ▼                                    │       │
+│  ┌────────────────┐  ┌────────────────┐                      │       │
+│  │ Tavily Search  │  │  Calculator    │                      │       │
+│  │ (Remote MCP)   │  │  (Local MCP)   │                      │       │
+│  │                │  │                │                      │       │
+│  │ Cloud-hosted   │  │ Local process  │                      │       │
+│  │ web search     │  │ for math       │                      │       │
+│  └───────┬────────┘  └───────┬────────┘                      │       │
+│          │                   │                               │       │
+│          └─────────┬─────────┘                               │       │
+│                    │                                         │       │
+│                    └─────────────────────────────────────────┘       │
+│                    (results return to same LLM)                      │
+│                                                                      │
+│                 │ (when done reasoning)                              │
+│                 ▼                                                    │
+│  Output: Answer combining search + calculation                       │
+│                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+The agent uses a **single LLM in a reasoning loop**. The LLM has MCP tools bound to it and autonomously decides which tools to call based on the user's query. Tool results are returned to the same LLM, which can then call additional tools or generate the final response.
 
 ## Prerequisites
 
@@ -189,26 +190,6 @@ curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
     }'
 ```
 
-## Sample Input/Output
-
-### Input
-
-```json
-{
-    "prompt": {
-        "messages": "What is sqrt(5) + sqrt(7) times the age of the current pope?"
-    }
-}
-```
-
-### Output
-
-```json
-{
-    "response": "Let me break this down:\n\n1. First, I searched for the current pope's age. Pope Francis was born on December 17, 1936, making him 88 years old.\n\n2. Now for the calculation:\n   - sqrt(5) ≈ 2.236\n   - sqrt(7) ≈ 2.646\n   - sqrt(5) + sqrt(7) ≈ 4.882\n   - 4.882 × 88 ≈ 429.62\n\nTherefore, sqrt(5) + sqrt(7) times the age of the current pope is approximately **429.62**."
-}
-```
-
 ## Project Structure
 
 ```
@@ -272,10 +253,10 @@ mcp_client = MultiServerMCPClient({
         "transport": "streamable-http",
         "headers": {"Authorization": f"Bearer {weather_api_key}"}
     },
-    # Add a local database tool
-    "database": {
+    # Add a local data analysis tool
+    "data_analysis": {
         "command": "python",
-        "args": ["-m", "my_db_mcp_server"],
+        "args": ["-m", "my_data_analysis_tool"],
         "transport": "stdio"
     }
 })
@@ -314,20 +295,6 @@ mcp_client = MultiServerMCPClient({
 })
 ```
 
-### Using Only Remote MCP Servers
-
-For serverless deployment, use only remote MCP servers:
-
-```python
-mcp_client = MultiServerMCPClient({
-    "search": {
-        "url": "https://mcp.tavily.com/mcp",
-        "transport": "streamable-http",
-        "headers": {"Authorization": f"Bearer {api_key}"}
-    }
-    # Local servers with "command" won't work in serverless
-})
-```
 
 ## MCP Server Types
 

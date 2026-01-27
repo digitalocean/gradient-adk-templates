@@ -21,47 +21,49 @@ This approach differs from the RAG template, which manages its own embeddings an
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│               KnowledgeBaseRAG Agent                     │
+│               KnowledgeBaseRAG Agent                    │
 ├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  Input: { prompt }                                       │
-│           │                                              │
-│           ▼                                              │
+│                                                         │
+│  Input: { prompt }                                      │
+│           │                                             │
+│           ▼                                             │
 │  ┌────────────────────────────────────┐                 │
-│  │          LLM (GPT-4.1)             │                 │
-│  │                                    │                 │
-│  │  Decides whether to query the      │                 │
-│  │  Knowledge Base                    │                 │
-│  └──────────────┬─────────────────────┘                 │
-│                 │                                        │
-│          (needs context)                                 │
-│                 │                                        │
-│                 ▼                                        │
-│  ┌────────────────────────────────────┐                 │
-│  │   query_digitalocean_kb Tool       │                 │
-│  │                                    │                 │
-│  │  ┌──────────────────────────────┐  │                 │
-│  │  │  DigitalOcean Knowledge Base │  │                 │
-│  │  │                              │  │                 │
-│  │  │  - Managed vector storage    │  │                 │
-│  │  │  - Automatic embeddings      │  │                 │
-│  │  │  - Semantic search           │  │                 │
-│  │  └──────────────────────────────┘  │                 │
-│  └──────────────┬─────────────────────┘                 │
-│                 │                                        │
-│                 ▼                                        │
-│  ┌────────────────────────────────────┐                 │
-│  │          LLM (GPT-4.1)             │                 │
-│  │                                    │                 │
-│  │  Synthesizes retrieved context     │                 │
-│  │  into a coherent answer            │                 │
-│  └──────────────┬─────────────────────┘                 │
-│                 │                                        │
-│                 ▼                                        │
-│  Output: Answer based on Knowledge Base                  │
-│                                                          │
+│  │              LLM                   │◄────────────┐   │
+│  │                                    │             │   │
+│  │  Bound to query_digitalocean_kb    │             │   │
+│  │  tool                              │      tool   │   │
+│  │                                    │      results│   │
+│  │  The LLM decides:                  │             │   │
+│  │  1. Whether to query the KB        │             │   │
+│  │  2. When to respond to the user    │             │   │
+│  └──────────────┬─────────────────────┘             │   │
+│                 │                                   │   │
+│          (calls tool)                               │   │
+│                 │                                   │   │
+│                 ▼                                   │   │
+│  ┌────────────────────────────────────┐             │   │
+│  │   query_digitalocean_kb Tool       │             │   │
+│  │                                    │             │   │
+│  │  ┌──────────────────────────────┐  │             │   │
+│  │  │  DigitalOcean Knowledge Base │  │             │   │
+│  │  │                              │  │             │   │
+│  │  │  - Managed vector storage    │  │             │   │
+│  │  │  - Automatic embeddings      │  │             │   │
+│  │  │  - Semantic search           │  │             │   │
+│  │  └──────────────────────────────┘  │             │   │
+│  └──────────────┬─────────────────────┘             │   │
+│                 │                                   │   │
+│                 └───────────────────────────────────┘   │
+│                 (results return to same LLM)            │
+│                                                         │
+│                 │ (when done reasoning)                 │
+│                 ▼                                       │
+│  Output: Answer based on Knowledge Base                 │
+│                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
+
+The agent uses a **single LLM in a reasoning loop**. The LLM has the Knowledge Base query tool bound to it and decides when to retrieve context. Tool results are returned to the same LLM, which synthesizes the retrieved documents into a coherent answer.
 
 ## Prerequisites
 
@@ -93,7 +95,7 @@ If you don't have a Knowledge Base yet:
 
 1. Go to [DigitalOcean Knowledge Bases](https://cloud.digitalocean.com/gen-ai/knowledge-bases)
 2. Click "Create Knowledge Base"
-3. Add a data source URL (e.g., `https://www.digitalocean.com/products/gradient`)
+3. Add a data source
 4. Wait for indexing to complete
 5. Copy the Knowledge Base UUID from the URL
 
@@ -172,26 +174,6 @@ curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
             "messages": "What is the Gradient AI Platform?"
         }
     }'
-```
-
-## Sample Input/Output
-
-### Input
-
-```json
-{
-    "prompt": {
-        "messages": "What features does the Gradient AI Platform offer?"
-    }
-}
-```
-
-### Output
-
-```json
-{
-    "response": "The Gradient AI Platform offers several key features:\n\n1. **Agent Development Kit (ADK)**: A framework for building, testing, and deploying AI agents with a single command.\n\n2. **Serverless Inference**: Access to large language models without managing infrastructure, with pay-per-use pricing.\n\n3. **Knowledge Bases**: Managed document storage and retrieval with automatic embedding generation.\n\n4. **Observability**: Built-in logging, tracing, and monitoring for deployed agents.\n\n5. **Framework Support**: Compatibility with popular frameworks like LangGraph, CrewAI, and LangChain."
-}
 ```
 
 ## Project Structure
@@ -294,25 +276,6 @@ search_tool.description = "Search the web for external information."
 
 agent = create_tool_calling_agent(llm, [query_digitalocean_kb, search_tool], prompt)
 ```
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "Knowledge Base not found" | Verify `DIGITALOCEAN_KB_ID` is correct |
-| Permission denied | Ensure API token has `genai:*` scope |
-| Empty results | Check that the KB has indexed content |
-| Slow responses | Large KBs may take longer to query |
-
-## Knowledge Base vs RAG Template
-
-| Feature | KnowledgeBaseRAG | RAG |
-|---------|------------------|-----|
-| Document storage | DigitalOcean managed | Self-managed |
-| Embeddings | Automatic | OpenAI API |
-| Data sources | URLs | Local PDFs |
-| Setup complexity | Lower | Higher |
-| Customization | Limited | Full control |
 
 ## Resources
 
