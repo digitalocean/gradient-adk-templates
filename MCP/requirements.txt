@@ -1,9 +1,6 @@
 gradient-adk
 langgraph
-langchain
-langchain-core
 gradient
-langchain-community 
-langchain_openai
-langchain-mcp-adapters
+langchain-gradient
+langchain-mcp-adapters==0.1.0
 mcp-server-calculator

@@ -6,6 +6,14 @@ from gradient import AsyncGradient
 from gradient_adk import entrypoint
 from langgraph.graph import END, START, StateGraph
 
+# Import prompts - edit prompts.py to customize the joke generation behavior
+from prompts import (
+    get_generate_joke_prompt,
+    get_improve_joke_prompt,
+    get_polish_joke_prompt,
+    SPICY_INSTRUCTION,
+)
+
 
 class State(TypedDict):
     topic: str
@@ -30,7 +38,7 @@ DEFAULT_MODEL = "openai-gpt-oss-120b"
 
 
 inference_client = AsyncGradient(
-    model_access_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
+    model_access_key=os.environ.get("DIGITALOCEAN_INFERENCE_KEY"),
 )
 
 
@@ -51,34 +59,27 @@ async def run_inference(prompt: str, model: str = DEFAULT_MODEL) -> str:
 async def generate_joke(state: State):
     """First LLM call to generate initial joke"""
 
-    joke = await run_inference(
-        f"Write a short joke about {state['topic']} in two sentences or less"
-    )
+    joke = await run_inference(get_generate_joke_prompt(state['topic']))
     return {"joke": joke}
 
 
 def add_spicy_note(state: State):
     """Insert an instruction to make the joke extra sassy."""
 
-    instruction = "Make the joke extra sassy."
-    return {"spicy_instruction": instruction}
+    return {"spicy_instruction": SPICY_INSTRUCTION}
 
 
 async def improve_joke(state: State):
     """Second LLM call to improve the joke"""
 
-    improved_joke = await run_inference(
-        f"Make the joke funnier and quirky: {state['joke']}"
-    )
+    improved_joke = await run_inference(get_improve_joke_prompt(state['joke']))
     return {"improved_joke": improved_joke}
 
 
 async def polish_joke(state: State):
     """Third LLM call for final polish"""
 
-    final_joke = await run_inference(
-        f"Remove any explanation of the joke or punchline: {state['improved_joke']}"
-    )
+    final_joke = await run_inference(get_polish_joke_prompt(state['improved_joke']))
     return {"final_joke": final_joke}
 
 

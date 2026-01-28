@@ -1,11 +1,14 @@
 import os
 from gradient_adk import entrypoint
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from langchain_core.messages import HumanMessage
 from langchain.agents import create_agent
 from pydantic import BaseModel
 from gradient import Gradient
+
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import SYSTEM_PROMPT
 
 client = Gradient(access_token=os.environ.get("DIGITALOCEAN_API_TOKEN"))
 
@@ -22,14 +25,12 @@ def query_digitalocean_kb(query: str, num_results: int) -> str:
     return []
 
 
-llm = ChatOpenAI(
-    base_url="https://inference.do-ai.run/v1",
+llm = ChatGradient(
     model="openai-gpt-oss-120b",
-    api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
 
 agent = create_agent(
-    llm, tools=[query_digitalocean_kb], system_prompt="You are a helpful assistant that will answer questions about DigitalOcean Gradient AI Platform."
+    llm, tools=[query_digitalocean_kb], system_prompt=SYSTEM_PROMPT
 )
 
 

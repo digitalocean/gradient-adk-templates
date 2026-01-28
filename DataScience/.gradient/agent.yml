@@ -1,0 +1,3 @@
+agent_environment: main
+agent_name: data-science-agent
+entrypoint_file: main.py

@@ -2,19 +2,21 @@ import os
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph, MessagesState, START
 from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
+from langchain_core.messages import SystemMessage
 from dotenv import load_dotenv
 from typing import Dict, Optional
 from gradient_adk import entrypoint
+
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import SYSTEM_MESSAGE
 
 load_dotenv()
 
 AGENT_GRAPH: Optional[StateGraph] = None
 
-model = ChatOpenAI(
+model = ChatGradient(
     model="openai-gpt-4.1",
-    base_url="https://inference.do-ai.run/v1",
-    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY")
 )
 
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
@@ -42,7 +44,11 @@ async def build_graph():
 
     # Next, define a function that calls the model with the tools
     def call_model(state: MessagesState):
-        response = model.bind_tools(tools).invoke(state["messages"])
+        messages = state["messages"]
+        # Prepend system message if not already present
+        if not messages or not isinstance(messages[0], SystemMessage):
+            messages = [SystemMessage(content=SYSTEM_MESSAGE)] + list(messages)
+        response = model.bind_tools(tools).invoke(messages)
         return {"messages": response}
 
     # Finally, we build the graph. This is a simple two-node loop between the model and the tools.

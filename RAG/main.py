@@ -1,3 +1,4 @@
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,17 +9,15 @@ from agents.answer_writer import generate_answer
 from tools.doc_retriever import create_retriever
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from gradient_adk import entrypoint
 from typing import Dict
 
 
 PDF_FOLDER_PATH = "./pdfs"
 
-response_model = ChatOpenAI(
+response_model = ChatGradient(
     model="openai-gpt-4.1",
-    base_url="https://inference.do-ai.run/v1",
-    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
     temperature=0.2
 )
 

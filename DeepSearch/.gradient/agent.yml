@@ -1,0 +1,3 @@
+agent_environment: main
+agent_name: deep-search-agent
+entrypoint_file: main.py

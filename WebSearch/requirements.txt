@@ -3,7 +3,6 @@ langchain==1.0.0
 langchain-core==1.2.5
 langchain-community
 langgraph==1.0.0
-langchain-openai==1.0.0
-openai>=1.50.0
+langchain-gradient>=0.1.0
 pydantic>=2.6,<3
 ddgs

@@ -1,12 +1,15 @@
 import os
 from gradient_adk import entrypoint
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from langchain_core.messages import HumanMessage
 from langchain.agents import create_agent
 from pydantic import BaseModel
 
 from langchain_community.tools import DuckDuckGoSearchRun
+
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import SYSTEM_PROMPT
 
 search = DuckDuckGoSearchRun()
 
@@ -18,14 +21,12 @@ def web_search(query: str) -> str:
     return results
 
 
-llm = ChatOpenAI(
-    base_url="https://inference.do-ai.run/v1",
+llm = ChatGradient(
     model="openai-gpt-oss-120b",
-    api_key=os.environ.get("GRADIENT_MODEL_ACCESS_KEY"),
 )
 
 agent = create_agent(
-    llm, tools=[web_search], system_prompt="You are a helpful assistant."
+    llm, tools=[web_search], system_prompt=SYSTEM_PROMPT
 )
 
 

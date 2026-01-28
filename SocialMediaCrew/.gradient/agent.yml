@@ -1,0 +1,3 @@
+agent_environment: main
+agent_name: social-media-crew
+entrypoint_file: main.py
