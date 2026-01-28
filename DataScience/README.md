@@ -291,6 +291,7 @@ DataScience/
 │   └── sample_data.sql    # Sample airline data
 ├── outputs/                # Generated visualizations
 ├── main.py                 # LangGraph workflow
+├── prompts.py              # All agent prompts (edit this to customize!)
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -326,6 +327,74 @@ The setup script creates these tables with airline data:
 | `ticket_sales_history` | Sales patterns, booking lead times |
 
 ## Customization
+
+### Customizing the Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the prompts used throughout the data science pipeline.
+
+**Key prompts you can customize:**
+
+| Variable/Function | Purpose | Example Change |
+|-------------------|---------|----------------|
+| `get_intent_classification_prompt()` | Classifies user intent | Add custom intent categories |
+| `SQL_GUIDELINES` | Rules for SQL generation | Add database-specific constraints |
+| `get_nl2sql_prompt()` | Translates questions to SQL | Add domain-specific SQL patterns |
+| `get_sql_fix_prompt()` | Fixes failed queries | Add common error patterns |
+| `get_analysis_prompt()` | Generates analysis code | Change visualization preferences |
+| `get_query_summary_prompt()` | Summarizes query results | Change summary style |
+
+**Example: Business-focused Summaries**
+
+```python
+# In prompts.py, modify get_query_summary_prompt:
+def get_query_summary_prompt(question: str, query: str, row_count: int, formatted_result: str) -> str:
+    return f"""Summarize these query results for a business stakeholder.
+
+Focus on:
+- Key insights and trends
+- Business implications
+- Actionable recommendations
+- Comparison to benchmarks if applicable
+
+Question: {question}
+Query: {query}
+Results ({row_count} rows):
+{formatted_result}"""
+```
+
+**Example: Stricter SQL Generation**
+
+```python
+# For databases where you want extra safety:
+SQL_GUIDELINES = """Important guidelines:
+1. Only generate SELECT queries - absolutely no modifications
+2. Always include a LIMIT clause (max 1000 rows)
+3. Never select * - always specify columns explicitly
+4. Avoid expensive operations like CROSS JOIN
+5. Do not access system tables or metadata
+6. Use appropriate indexes when filtering"""
+```
+
+**Example: Custom Analysis Style**
+
+```python
+# For more detailed statistical analysis:
+def get_analysis_prompt(question: str, data_description: str, data_context: str = "") -> str:
+    return f"""You are a data scientist performing rigorous statistical analysis.
+
+{data_description}
+{data_context}
+
+Task: {question}
+
+Requirements:
+1. Calculate appropriate statistics (mean, median, std dev)
+2. Check for outliers before analysis
+3. Report confidence intervals where applicable
+4. Include data quality observations
+5. Use seaborn for publication-quality visualizations
+..."""
+```
 
 ### Connecting to Your Database
 

@@ -6,12 +6,23 @@ crafting viral-worthy posts and threads.
 """
 
 import os
+import sys
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_gradient import ChatGradient
 
 from agents.researcher import ResearchBrief
+
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    get_copywriter_system,
+    get_content_creation_prompt,
+    get_platform_guidelines,
+    REVISION_SYSTEM,
+    get_revision_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,44 +80,24 @@ def create_content(
     model = get_model(temperature=0.7)
     structured_model = model.with_structured_output(SocialMediaContent)
 
-    platform_guidelines = _get_platform_guidelines(platform)
+    platform_guidelines = get_platform_guidelines(platform)
 
-    prompt = f"""You are an expert social media copywriter known for creating viral content.
-
-Create a {content_type} for {platform} based on this research brief:
-
-**Topic:** {research_brief.main_topic}
-
-**Trending Context:** {research_brief.trending_context}
-
-**Key Facts to Include:**
-{chr(10).join(f'- {fact}' for fact in research_brief.key_facts)}
-
-**Viral Hooks to Consider:**
-{chr(10).join(f'- {hook}' for hook in research_brief.viral_hooks)}
-
-**Target Emotions:** {', '.join(research_brief.target_emotions)}
-
-**Suggested Hashtags:** {', '.join(research_brief.hashtag_suggestions)}
-
-**Avoid:** {', '.join(research_brief.content_warnings) if research_brief.content_warnings else 'Nothing specific'}
-
-**Platform Guidelines:**
-{platform_guidelines}
-
-{"Create a thread with " + str(thread_length) + " posts. The first post should hook readers, middle posts deliver value, and the last post should have a strong CTA." if content_type == "thread" else "Create a single impactful post."}
-
-Requirements:
-1. Start with an attention-grabbing hook (pattern interrupt, controversial take, or surprising stat)
-2. Deliver genuine value - don't be clickbait
-3. Use conversational, authentic tone
-4. Include a clear call-to-action
-5. Suggest an image prompt that would complement the content
-
-Make the content feel authentic and shareable, not corporate or salesy."""
+    prompt = get_content_creation_prompt(
+        platform=platform,
+        content_type=content_type,
+        topic=research_brief.main_topic,
+        trending_context=research_brief.trending_context,
+        key_facts=research_brief.key_facts,
+        viral_hooks=research_brief.viral_hooks,
+        target_emotions=research_brief.target_emotions,
+        hashtag_suggestions=research_brief.hashtag_suggestions,
+        content_warnings=research_brief.content_warnings,
+        platform_guidelines=platform_guidelines,
+        thread_length=thread_length
+    )
 
     content = structured_model.invoke([
-        {"role": "system", "content": f"You are a viral {platform} content creator with millions of followers. You write content that gets massive engagement."},
+        {"role": "system", "content": get_copywriter_system(platform)},
         {"role": "user", "content": prompt}
     ])
 
@@ -137,29 +128,16 @@ def rewrite_content(
 
     original_text = _format_content_for_display(original_content)
 
-    prompt = f"""You are revising social media content based on reviewer feedback.
-
-**Original Content:**
-{original_text}
-
-**Reviewer Feedback:**
-{feedback}
-
-**Original Research Brief:**
-Topic: {research_brief.main_topic}
-Key Facts: {', '.join(research_brief.key_facts[:3])}
-Viral Hooks: {', '.join(research_brief.viral_hooks[:3])}
-
-Please revise the content to address the feedback while maintaining:
-1. The viral potential and hook
-2. Authentic, conversational tone
-3. Clear value delivery
-4. Strong call-to-action
-
-Create improved content that addresses all feedback points."""
+    prompt = get_revision_prompt(
+        original_text=original_text,
+        feedback=feedback,
+        topic=research_brief.main_topic,
+        key_facts=research_brief.key_facts,
+        viral_hooks=research_brief.viral_hooks
+    )
 
     revised_content = structured_model.invoke([
-        {"role": "system", "content": "You are an expert copywriter revising content based on editorial feedback."},
+        {"role": "system", "content": REVISION_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -167,36 +145,6 @@ Create improved content that addresses all feedback points."""
     return revised_content
 
 
-def _get_platform_guidelines(platform: str) -> str:
-    """Get platform-specific content guidelines."""
-    guidelines = {
-        "twitter": """
-- Character limit: 280 per post (but threads can be longer)
-- Use line breaks for readability
-- Emojis can increase engagement but don't overdo it
-- First line is crucial - it shows in preview
-- End threads with a retweet request or follow CTA
-- Use 2-3 relevant hashtags max
-""",
-        "instagram": """
-- Captions can be up to 2,200 characters
-- First 125 characters show in preview - make them count
-- Use more hashtags (up to 30, but 5-10 targeted ones work best)
-- Include a clear CTA (save, share, comment)
-- Emojis are expected and increase engagement
-- Break up text with line breaks and emojis
-""",
-        "linkedin": """
-- Professional but personable tone
-- First 2 lines are crucial (before "see more")
-- Longer posts (1,300+ characters) often perform well
-- Use minimal hashtags (3-5)
-- Include a question to drive comments
-- Share insights, lessons learned, or industry perspectives
-- Avoid overly promotional content
-"""
-    }
-    return guidelines.get(platform.lower(), guidelines["twitter"])
 
 
 def _format_content_for_display(content: SocialMediaContent) -> str:

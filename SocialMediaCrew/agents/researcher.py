@@ -6,6 +6,7 @@ context for creating viral social media content.
 """
 
 import os
+import sys
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -16,6 +17,15 @@ from tools.web_search import (
     search_topic_insights,
     search_viral_content,
     SearchResults
+)
+
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    RESEARCHER_SYSTEM,
+    get_research_prompt,
+    TREND_ANALYST_SYSTEM,
+    get_trending_topics_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,25 +88,10 @@ def research_topic(topic: str, platform: str = "twitter") -> ResearchBrief:
     model = get_model(temperature=0.3)
     structured_model = model.with_structured_output(ResearchBrief)
 
-    prompt = f"""You are a social media research expert. Analyze the following research
-and create a comprehensive brief for creating viral {platform} content about "{topic}".
-
-Research Data:
-{research_context}
-
-Create a research brief that will help a copywriter create engaging, viral content.
-Focus on:
-1. What's currently trending related to this topic
-2. Key facts and statistics that would resonate with audiences
-3. Viral hooks and angles that have worked for similar content
-4. Emotional triggers that drive engagement
-5. Relevant hashtags for discoverability
-6. Any sensitive areas to avoid
-
-Be specific and actionable in your recommendations."""
+    prompt = get_research_prompt(topic, platform, research_context)
 
     brief = structured_model.invoke([
-        {"role": "system", "content": "You are an expert social media researcher who identifies viral content opportunities."},
+        {"role": "system", "content": RESEARCHER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -133,18 +128,7 @@ def identify_trending_topics(topic_area: str, count: int = 5) -> List[TrendingTo
     # Use LLM to identify and analyze trending topics
     model = get_model(temperature=0.3)
 
-    prompt = f"""Analyze these search results about trending {topic_area} topics and identify
-the top {count} trending topics that would make great social media content.
-
-Search Results:
-{search_summary}
-
-For each topic, explain:
-1. What the topic is
-2. Why it's trending (score 1-10 for relevance)
-3. Potential content angles
-
-Return exactly {count} trending topics."""
+    prompt = get_trending_topics_prompt(topic_area, count, search_summary)
 
     class TrendingTopicsList(BaseModel):
         topics: List[TrendingTopic] = Field(description=f"List of {count} trending topics")
@@ -152,7 +136,7 @@ Return exactly {count} trending topics."""
     structured_model = model.with_structured_output(TrendingTopicsList)
 
     result = structured_model.invoke([
-        {"role": "system", "content": "You are a trend analyst who identifies viral content opportunities."},
+        {"role": "system", "content": TREND_ANALYST_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 

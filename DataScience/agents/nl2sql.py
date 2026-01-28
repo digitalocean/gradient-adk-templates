@@ -6,10 +6,20 @@ executes them against the database, and formats the results.
 """
 
 import os
+import sys
 import logging
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_gradient import ChatGradient
+
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    SQL_GENERATOR_SYSTEM,
+    get_nl2sql_prompt,
+    SQL_FIXER_SYSTEM,
+    get_sql_fix_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,30 +87,7 @@ def create_nl2sql_prompt(question: str, schema_info: Dict[str, Any]) -> str:
         Formatted prompt
     """
     schema_text = get_schema_prompt(schema_info)
-
-    prompt = f"""You are a SQL expert. Your task is to translate natural language questions into SQL queries.
-
-{schema_text}
-
-Important guidelines:
-1. Only generate SELECT queries - no INSERT, UPDATE, DELETE, or other modifications
-2. Use appropriate JOINs when data spans multiple tables
-3. Use aliases for clarity when joining tables
-4. Add appropriate WHERE clauses to filter data
-5. Use GROUP BY and aggregate functions (COUNT, SUM, AVG, etc.) when appropriate
-6. Add ORDER BY for meaningful result ordering
-7. Use LIMIT to prevent returning too many rows (default: 100)
-8. Handle NULL values appropriately
-9. Use appropriate date/time functions for temporal queries
-
-User Question: {question}
-
-Generate a SQL query to answer this question. Respond with:
-1. The SQL query
-2. A brief explanation of what it does
-3. The tables used"""
-
-    return prompt
+    return get_nl2sql_prompt(question, schema_text)
 
 
 def generate_sql(question: str, schema_info: Dict[str, Any]) -> SQLQuery:
@@ -122,7 +109,7 @@ def generate_sql(question: str, schema_info: Dict[str, Any]) -> SQLQuery:
     structured_model = model.with_structured_output(SQLQuery)
 
     sql_query = structured_model.invoke([
-        {"role": "system", "content": "You are a SQL expert that translates natural language to SQL queries."},
+        {"role": "system", "content": SQL_GENERATOR_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -262,26 +249,12 @@ def validate_and_fix_sql(
         Fixed SQL query
     """
     schema_text = get_schema_prompt(schema_info)
-
-    prompt = f"""The following SQL query produced an error. Please fix it.
-
-{schema_text}
-
-Original Query:
-{original_query}
-
-Error Message:
-{error_message}
-
-Please provide a corrected SQL query that addresses the error. Remember:
-1. Only SELECT queries are allowed
-2. Check table and column names against the schema
-3. Ensure proper syntax for the database type"""
+    prompt = get_sql_fix_prompt(original_query, error_message, schema_text)
 
     model = get_model(temperature=0.0)
     structured_model = model.with_structured_output(SQLQuery)
 
     return structured_model.invoke([
-        {"role": "system", "content": "You are a SQL expert that fixes SQL queries."},
+        {"role": "system", "content": SQL_FIXER_SYSTEM},
         {"role": "user", "content": prompt}
     ])

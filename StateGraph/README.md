@@ -221,6 +221,7 @@ StateGraph/
 ├── .gradient/
 │   └── agent.yml          # Deployment configuration
 ├── main.py                 # Complete LangGraph workflow
+├── prompts.py              # All LLM prompts (edit this to customize!)
 ├── requirements.txt        # Dependencies
 ├── .env.example           # Environment template
 └── README.md
@@ -284,6 +285,49 @@ graph = workflow.compile()
 ```
 
 ## Customization
+
+### Customizing the Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the prompts used at each step of the joke generation pipeline.
+
+**Key prompts you can customize:**
+
+| Function | Purpose | Example Change |
+|----------|---------|----------------|
+| `get_generate_joke_prompt()` | Creates the initial content | Change to riddles, puns, or stories |
+| `get_improve_joke_prompt()` | Refines the content | Adjust improvement criteria |
+| `get_polish_joke_prompt()` | Final polish | Change formatting or cleanup rules |
+| `SPICY_INSTRUCTION` | Added when spicy mode is on | Modify the extra flair |
+
+**Example: Convert to a Riddle Generator**
+
+```python
+# In prompts.py, change the functions:
+
+def get_generate_joke_prompt(topic: str) -> str:
+    return f"Create a clever riddle about {topic}. Include the answer."
+
+def get_improve_joke_prompt(joke: str) -> str:
+    return f"Make this riddle more challenging but still solvable: {joke}"
+
+def get_polish_joke_prompt(improved_joke: str) -> str:
+    return f"Format the riddle with the question first, then 'Answer:' on a new line: {improved_joke}"
+
+SPICY_INSTRUCTION = "Make the riddle extra tricky with a twist ending."
+```
+
+**Example: Dad Joke Generator**
+
+```python
+def get_generate_joke_prompt(topic: str) -> str:
+    return f"Write a classic dad joke about {topic}. It should be punny and groan-worthy."
+
+def get_improve_joke_prompt(joke: str) -> str:
+    return f"Make this dad joke even more punny: {joke}"
+
+def get_polish_joke_prompt(improved_joke: str) -> str:
+    return f"Ensure the punchline lands well and remove any explanations: {improved_joke}"
+```
 
 ### Adding a New Node
 

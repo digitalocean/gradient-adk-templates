@@ -7,6 +7,9 @@ from langchain.agents import create_agent
 from pydantic import BaseModel
 from gradient import Gradient
 
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import SYSTEM_PROMPT
+
 client = Gradient(access_token=os.environ.get("DIGITALOCEAN_API_TOKEN"))
 
 @tool
@@ -27,7 +30,7 @@ llm = ChatGradient(
 )
 
 agent = create_agent(
-    llm, tools=[query_digitalocean_kb], system_prompt="You are a helpful assistant that will answer questions about DigitalOcean Gradient AI Platform."
+    llm, tools=[query_digitalocean_kb], system_prompt=SYSTEM_PROMPT
 )
 
 

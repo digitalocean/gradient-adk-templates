@@ -6,12 +6,22 @@ engagement, ensuring platform best practices are followed.
 """
 
 import os
+import sys
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_gradient import ChatGradient
 
 from agents.copywriter import SocialMediaContent, ThreadPost
+
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    get_optimization_system,
+    get_optimization_prompt,
+    get_platform_best_practices,
+    ENGAGEMENT_ANALYST_SYSTEM,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,35 +76,12 @@ def optimize_content(content: SocialMediaContent) -> OptimizedContent:
     structured_model = model.with_structured_output(OptimizedContent)
 
     content_text = _format_content(content)
-    platform_best_practices = _get_best_practices(content.platform)
+    platform_best_practices = get_platform_best_practices(content.platform)
 
-    prompt = f"""You are a social media optimization expert. Review and optimize this content
-for maximum engagement on {content.platform}.
-
-**Current Content:**
-{content_text}
-
-**Platform Best Practices for {content.platform}:**
-{platform_best_practices}
-
-Optimize the content by:
-1. **Hook Enhancement**: Make the opening more scroll-stopping
-2. **Readability**: Improve formatting, line breaks, and flow
-3. **Emotional Impact**: Strengthen emotional triggers
-4. **CTA Optimization**: Make the call-to-action more compelling
-5. **Hashtag Strategy**: Optimize hashtags for discoverability
-6. **Character Optimization**: Ensure optimal length for the platform
-7. **Engagement Triggers**: Add elements that encourage comments/shares
-
-Also suggest:
-- Best posting time for this content type
-- Predicted engagement level (low/medium/high/viral potential)
-
-Maintain the authentic voice while making it more engaging.
-List all optimizations you've made."""
+    prompt = get_optimization_prompt(content.platform, content_text, platform_best_practices)
 
     optimized = structured_model.invoke([
-        {"role": "system", "content": f"You are a {content.platform} growth expert who has helped accounts grow from 0 to millions of followers."},
+        {"role": "system", "content": get_optimization_system(content.platform)},
         {"role": "user", "content": prompt}
     ])
 
@@ -139,7 +126,7 @@ Score each aspect from 1-10 and provide specific strengths and weaknesses.
 Be honest and critical - this helps improve the content."""
 
     analysis = structured_model.invoke([
-        {"role": "system", "content": "You are a social media analytics expert who can predict content performance."},
+        {"role": "system", "content": ENGAGEMENT_ANALYST_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -208,36 +195,3 @@ def _format_content(content: SocialMediaContent) -> str:
     return "\n".join(lines)
 
 
-def _get_best_practices(platform: str) -> str:
-    """Get platform-specific best practices."""
-    practices = {
-        "twitter": """
-- First tweet should hook in <5 seconds of reading
-- Use white space and line breaks liberally
-- Optimal thread length: 5-10 tweets
-- End with clear CTA (follow, retweet, reply)
-- Use 1-2 relevant hashtags, not more
-- Best engagement: educational content, hot takes, personal stories
-- Avoid: walls of text, too many hashtags, salesy language
-""",
-        "instagram": """
-- First line must hook (shows in preview)
-- Use emojis as visual breaks
-- Optimal caption length: 500-1000 characters for engagement
-- Strong CTA: "Save this for later", "Tag someone who needs this"
-- Mix of niche and broad hashtags
-- Personal stories outperform generic advice
-- Avoid: engagement bait, too corporate
-""",
-        "linkedin": """
-- First 2 lines are crucial (before "see more")
-- Personal stories with business lessons perform best
-- Use "I" statements and vulnerability
-- Optimal length: 1,000-1,500 characters
-- End with a question to drive comments
-- Minimal hashtags (3-5 max)
-- Post early morning or lunch time
-- Avoid: overly promotional, corporate speak
-"""
-    }
-    return practices.get(platform.lower(), practices["twitter"])

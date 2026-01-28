@@ -319,6 +319,7 @@ DeepSearch/
 │   ├── __init__.py
 │   └── serper_search.py   # Web search integration
 ├── main.py                 # LangGraph workflow with interrupts
+├── prompts.py              # All agent prompts (edit this to customize!)
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -357,6 +358,69 @@ The agent interprets natural language responses:
 | **Question** | "why did you include X?", "what about Y?" |
 
 ## Customization
+
+### Customizing the Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the prompts used throughout the research pipeline.
+
+**Key prompts you can customize:**
+
+| Variable | Purpose | Example Change |
+|----------|---------|----------------|
+| `PLAN_GENERATOR_PROMPT` | Creates the initial research plan | Add required sections or methodology |
+| `PLAN_REFINEMENT_PROMPT` | Refines plan based on feedback | Change how feedback is incorporated |
+| `INTENT_CLASSIFICATION_PROMPT` | Interprets user responses | Add new intent categories |
+| `get_section_analysis_prompt()` | Analyzes search results | Change synthesis requirements |
+| `COMPOSER_PROMPT` | Composes the final report | Change format, style, or citation style |
+
+**Example: Academic Research Style**
+
+```python
+# In prompts.py, modify PLAN_GENERATOR_PROMPT:
+PLAN_GENERATOR_PROMPT = """You are an academic research planner creating a literature review structure.
+
+For each goal, classify as:
+- [LITERATURE] - Review of existing academic papers and studies
+- [METHODOLOGY] - Research methodology to be applied
+- [FINDINGS] - Expected findings or analysis sections
+- [DISCUSSION] - Interpretation and implications
+
+Research Topic: {topic}
+
+Create an academic research plan with proper scholarly structure."""
+```
+
+**Example: Investigative Journalism Style**
+
+```python
+COMPOSER_PROMPT = """You are an investigative journalist writing a comprehensive report.
+
+Requirements:
+1. Lead with the most newsworthy finding
+2. Include quotes and specific attributions
+3. Present multiple perspectives on controversial points
+4. Clearly distinguish between facts and analysis
+5. End with implications and next steps
+
+Research Topic: {topic}
+..."""
+```
+
+**Example: Technical Documentation**
+
+```python
+COMPOSER_PROMPT = """You are a technical writer creating documentation.
+
+Format requirements:
+1. Start with an executive summary for non-technical readers
+2. Include code examples or configurations where relevant
+3. Add "Prerequisites" and "Next Steps" sections
+4. Use tables for comparing options
+5. Include troubleshooting guidance
+
+Research Topic: {topic}
+..."""
+```
 
 ### Adjusting Research Depth
 

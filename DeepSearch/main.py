@@ -45,6 +45,9 @@ logger = logging.getLogger("DeepSearch")
 # Add current directory to path for local imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import INTENT_CLASSIFICATION_PROMPT, get_section_analysis_prompt
+
 from agents.planner import (
     generate_initial_plan,
     refine_plan,
@@ -142,20 +145,10 @@ def classify_user_intent(message: str, plan_display: str) -> UserIntent:
     classifier = get_intent_classifier()
     structured_classifier = classifier.with_structured_output(UserIntent)
 
-    prompt = f"""You are classifying a user's response to a research plan they are reviewing.
-
-Current Research Plan:
-{plan_display}
-
-User's Message: "{message}"
-
-Classify the user's intent:
-- "approve": User is satisfied and wants to proceed (e.g., "looks good", "approve", "let's go", "proceed", "yes", "ok", "start the research", "that works")
-- "refine": User wants changes to the plan (e.g., "add X", "remove Y", "change Z", "can you also include...", "I'd like more focus on...")
-- "question": User is asking a question about the plan or process
-- "other": Unclear or unrelated message
-
-If the intent is "refine", extract the specific changes/feedback the user is requesting."""
+    prompt = INTENT_CLASSIFICATION_PROMPT.format(
+        plan_display=plan_display,
+        user_response=message
+    )
 
     result = structured_classifier.invoke([{"role": "user", "content": prompt}])
     logger.info(f"Classified intent: {result.intent} - {result.reasoning}")
@@ -336,23 +329,13 @@ def research_section_node(state: SectionResearchState) -> dict:
             ])
 
             # Analyze results
-            analysis_prompt = f"""Analyze these search results for the section "{section_title}" of a report on "{topic}".
-
-Section description: {section_description}
-Query: {query}
-
-Results:
-{formatted_results}
-
-Provide:
-1. A synthesis of the key findings (2-3 paragraphs)
-2. Rate the quality of these results for this section (1-10)
-
-Format your response as:
-SUMMARY:
-[Your synthesis]
-
-QUALITY: [score]"""
+            analysis_prompt = get_section_analysis_prompt(
+                section_title=section_title,
+                section_description=section_description,
+                query=query,
+                formatted_results=formatted_results,
+                topic=topic
+            )
 
             response = researcher_model.invoke([{"role": "user", "content": analysis_prompt}])
             content = response.content

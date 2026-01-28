@@ -6,6 +6,7 @@ providing approval or specific feedback for revisions.
 """
 
 import os
+import sys
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -13,6 +14,15 @@ from langchain_gradient import ChatGradient
 
 from agents.copywriter import SocialMediaContent
 from agents.social_media_manager import OptimizedContent
+
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    REVIEWER_SYSTEM,
+    get_review_prompt,
+    QUICK_REVIEWER_SYSTEM,
+    BRAND_SAFETY_SYSTEM,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,46 +80,16 @@ def review_content(
 
     content_text = _format_content(content)
 
-    brand_section = ""
-    if brand_guidelines:
-        brand_section = f"""
-**Brand Guidelines to Follow:**
-{brand_guidelines}
-"""
-
-    prompt = f"""You are a senior content reviewer for a major brand's social media presence.
-Review this content thoroughly before it goes live.
-
-**Content to Review:**
-{content_text}
-
-**Platform:** {content.platform}
-**Engagement Prediction:** {content.engagement_prediction}
-{brand_section}
-
-**Review Criteria:**
-
-1. **Hook Quality**: Is the opening scroll-stopping? Does it create curiosity?
-2. **Value Delivery**: Does the content deliver real value to readers?
-3. **Authenticity**: Does it sound human and authentic, not corporate or AI-generated?
-4. **Tone**: Is the tone appropriate for the platform and audience?
-5. **Call-to-Action**: Is the CTA clear and compelling?
-6. **Hashtag Strategy**: Are hashtags relevant and not overdone?
-7. **Brand Safety**: Any controversial, offensive, or risky content?
-8. **Factual Accuracy**: Any claims that could be misleading?
-9. **Engagement Potential**: Will this drive meaningful engagement?
-10. **Grammar/Spelling**: Any errors?
-
-**Approval Criteria:**
-- Overall quality must be {approval_threshold}+ out of 10 for approval
-- Brand safety must be 8+ out of 10
-- No critical issues
-
-Be constructive but honest. If content needs work, provide specific, actionable feedback.
-Only approve content that is genuinely ready to publish."""
+    prompt = get_review_prompt(
+        platform=content.platform,
+        content_text=content_text,
+        engagement_prediction=content.engagement_prediction,
+        brand_guidelines=brand_guidelines or "",
+        approval_threshold=approval_threshold
+    )
 
     review = structured_model.invoke([
-        {"role": "system", "content": "You are a meticulous content reviewer who maintains high standards while being constructive."},
+        {"role": "system", "content": REVIEWER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -162,7 +142,7 @@ CTA: {content.call_to_action}
 Is this ready to publish? What's the biggest issue if not?"""
 
     result = structured_model.invoke([
-        {"role": "system", "content": "You are a quick-thinking content reviewer."},
+        {"role": "system", "content": QUICK_REVIEWER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -207,7 +187,7 @@ Check for:
 Be thorough but not overly cautious - edgy content can work if done tastefully."""
 
     result = structured_model.invoke([
-        {"role": "system", "content": "You are a brand safety expert who protects brands while allowing creative content."},
+        {"role": "system", "content": BRAND_SAFETY_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 

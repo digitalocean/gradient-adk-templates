@@ -183,12 +183,50 @@ Crew/
 ├── .gradient/
 │   └── agent.yml          # Deployment configuration
 ├── main.py                 # CrewAI agents, tasks, and entry point
+├── prompts.py              # All agent prompts (edit this to customize!)
 ├── requirements.txt        # Dependencies
 ├── .env.example           # Environment template
 └── README.md
 ```
 
 ## Customization
+
+### Customizing Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the agent roles, goals, backstories, and task descriptions in one place.
+
+**Key prompts you can customize:**
+
+| Variable | Purpose | Example Change |
+|----------|---------|----------------|
+| `RESEARCHER_ROLE` | Agent's role title | Change to "Sports Research Specialist" |
+| `RESEARCHER_BACKSTORY` | Agent's persona/expertise | Adjust expertise area and tone |
+| `get_researcher_goal()` | What the researcher should find | Focus on different content types |
+| `TRIVIA_GENERATOR_ROLE` | Trivia agent's role | Change to "Quiz Question Creator" |
+| `TRIVIA_GENERATOR_BACKSTORY` | Trivia agent's persona | Adjust for educational vs entertainment focus |
+| `get_trivia_task_description()` | Output format and requirements | Change from trivia to flashcards or quiz |
+
+**Example: Converting to a Quiz Generator**
+
+```python
+# In prompts.py, change:
+TRIVIA_GENERATOR_ROLE = "Quiz Question Creator"
+
+TRIVIA_GENERATOR_BACKSTORY = """You are an educational content creator who
+specializes in creating multiple-choice quiz questions. You excel at
+testing knowledge while making learning fun."""
+
+def get_trivia_task_description(topic: str, date: str) -> str:
+    return f"""Based on the news articles found, create 5 multiple-choice
+quiz questions about {topic} from {date}.
+
+Each question should:
+- Have 4 answer options (A, B, C, D)
+- Include the correct answer marked
+- Test factual knowledge from the articles
+- Be challenging but fair
+"""
+```
 
 ### Adding New Agents
 

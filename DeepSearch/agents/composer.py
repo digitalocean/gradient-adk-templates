@@ -4,34 +4,12 @@ from typing import List, Dict
 from pydantic import BaseModel, Field
 from langchain_gradient import ChatGradient
 
+# Import prompts from central prompts.py - edit that file to customize
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import COMPOSER_PROMPT
+
 logger = logging.getLogger(__name__)
-
-COMPOSER_PROMPT = """You are an expert report writer. Your task is to compose a comprehensive, well-structured research report based on the provided section findings.
-
-Research Topic: {topic}
-Report Title: {report_title}
-
-Introduction Points to Cover:
-{introduction_points}
-
-Section Findings:
-{section_findings}
-
-Conclusion Points to Cover:
-{conclusion_points}
-
-Available Sources (for citation):
-{sources}
-
-Write a detailed report that:
-1. Has a compelling introduction covering the key points
-2. Develops each section with the research findings provided
-3. Uses inline citations with numbered references [1], [2], etc.
-4. Provides analysis and synthesis, not just facts
-5. Has a strong conclusion summarizing key insights
-6. Ends with a numbered reference list
-
-The report should be professional, informative, and well-cited. Use markdown formatting."""
 
 
 class ComposedSection(BaseModel):

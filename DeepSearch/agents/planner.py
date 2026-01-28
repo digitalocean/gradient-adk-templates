@@ -4,37 +4,12 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_gradient import ChatGradient
 
+# Import prompts from central prompts.py - edit that file to customize
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import PLAN_GENERATOR_PROMPT, PLAN_REFINEMENT_PROMPT
+
 logger = logging.getLogger(__name__)
-
-PLAN_GENERATOR_PROMPT = """You are an expert research planner. Your task is to create a comprehensive research plan for investigating a given topic.
-
-Given the research topic, create a detailed research plan with 3-5 specific research goals. Each goal should be classified as either:
-- [RESEARCH] - Goals that guide information gathering via web search
-- [DELIVERABLE] - Goals that guide creation of final outputs (tables, summaries, reports)
-
-For each goal, provide:
-1. A clear objective describing what information to find or create
-2. The type tag ([RESEARCH] or [DELIVERABLE])
-3. Key questions to answer for this goal
-
-Research Topic: {topic}
-
-Create a research plan that will result in a thorough, well-cited report on this topic."""
-
-PLAN_REFINEMENT_PROMPT = """You are an expert research planner helping to refine a research plan based on user feedback.
-
-Current Research Plan:
-{current_plan}
-
-User Feedback: {feedback}
-
-Please update the research plan based on the user's feedback. You can:
-- Add new goals
-- Remove existing goals
-- Modify goal descriptions or questions
-- Reorder goals
-
-Maintain the [RESEARCH] and [DELIVERABLE] tags for each goal."""
 
 
 class ResearchGoal(BaseModel):

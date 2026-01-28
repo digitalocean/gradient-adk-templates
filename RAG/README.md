@@ -259,12 +259,66 @@ RAG/
 ├── pdfs/                   # Your PDF documents
 │   └── *.pdf
 ├── main.py                 # LangGraph workflow
+├── prompts.py              # All agent prompts (edit this to customize!)
 ├── requirements.txt
 ├── .env.example
 └── README.md
 ```
 
 ## Customization
+
+### Customizing the Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the prompts used by the RAG pipeline agents.
+
+**Key prompts you can customize:**
+
+| Variable | Purpose | Example Change |
+|----------|---------|----------------|
+| `GRADE_PROMPT` | Evaluates document relevance | Make stricter for high-precision retrieval |
+| `REWRITE_PROMPT` | Reformulates failed queries | Add domain-specific synonyms |
+| `GENERATE_PROMPT` | Creates the final answer | Change style (concise vs detailed) |
+
+**Example: Detailed Technical Answers**
+
+```python
+# In prompts.py, change GENERATE_PROMPT to:
+GENERATE_PROMPT = (
+    "You are a technical documentation assistant. "
+    "Use the following retrieved context to answer the question thoroughly. "
+    "Provide step-by-step explanations when applicable. "
+    "If the context doesn't contain enough information, say so and explain what's missing.\n"
+    "Question: {question} \n"
+    "Context: {context}"
+)
+```
+
+**Example: Strict Document Grading**
+
+```python
+# For higher precision retrieval:
+GRADE_PROMPT = (
+    "You are a strict grader assessing relevance of a retrieved document to a user question. \n "
+    "Here is the retrieved document: \n\n {context} \n\n"
+    "Here is the user question: {question} \n"
+    "The document must directly answer the question or contain key information needed. "
+    "Tangentially related content should be graded as 'no'. \n"
+    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant."
+)
+```
+
+**Example: Citation-focused Answers**
+
+```python
+GENERATE_PROMPT = (
+    "You are a research assistant that provides well-cited answers. "
+    "Use the retrieved context to answer the question. "
+    "Reference specific parts of the documents in your answer. "
+    "If you don't have enough information, acknowledge the limitations.\n"
+    "Question: {question} \n"
+    "Context: {context}"
+)
+```
 
 ### Change the Documents
 

@@ -18,6 +18,15 @@ from pydantic import BaseModel, Field
 from contextlib import redirect_stdout, redirect_stderr
 from langchain_gradient import ChatGradient
 
+# Import prompts from central prompts.py - edit that file to customize
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import (
+    ANALYSIS_CODE_GENERATOR_SYSTEM,
+    get_analysis_prompt,
+    ANALYSIS_FIXER_SYSTEM,
+    get_analysis_fix_prompt,
+)
+
 logger = logging.getLogger(__name__)
 
 # Model configuration
@@ -86,34 +95,7 @@ Sample rows: {available_data.get('rows', [])[:3]}
 Total rows: {available_data.get('row_count', 0)}
 """
 
-    prompt = f"""You are a data analyst writing Python code for analysis and visualization.
-
-{data_description}
-{data_context}
-
-Task: {question}
-
-Write Python code to answer this question. Guidelines:
-1. Use pandas for data manipulation
-2. Use matplotlib or seaborn for visualizations
-3. The data is already loaded in a variable called 'data' (pandas DataFrame)
-4. If creating a visualization, save it using plt.savefig(output_path) where output_path is provided
-5. Print any numerical results or insights
-6. Keep the code concise and focused
-7. Add brief comments for clarity
-8. Handle potential errors gracefully
-9. For visualizations:
-   - Use clear titles and labels
-   - Choose appropriate chart types
-   - Use a clean style (seaborn or matplotlib styles)
-   - Set figure size appropriately
-
-Important: The variable 'data' contains the query results as a pandas DataFrame.
-The variable 'output_path' contains the path where any visualization should be saved.
-
-Generate only the Python code, no markdown formatting."""
-
-    return prompt
+    return get_analysis_prompt(question, data_description, data_context)
 
 
 def generate_analysis_code(
@@ -140,7 +122,7 @@ def generate_analysis_code(
     structured_model = model.with_structured_output(AnalysisCode)
 
     analysis_code = structured_model.invoke([
-        {"role": "system", "content": "You are a data analyst writing Python code for analysis and visualization."},
+        {"role": "system", "content": ANALYSIS_CODE_GENERATOR_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -309,25 +291,12 @@ def fix_analysis_code(
     Returns:
         Fixed analysis code
     """
-    prompt = f"""The following Python code produced an error. Please fix it.
-
-{data_description}
-
-Original Code:
-```python
-{original_code}
-```
-
-Error:
-{error_message}
-
-Please provide corrected Python code that addresses the error. Maintain the same
-analysis goal but fix the issues."""
+    prompt = get_analysis_fix_prompt(original_code, error_message, data_description)
 
     model = get_model(temperature=0.0)
     structured_model = model.with_structured_output(AnalysisCode)
 
     return structured_model.invoke([
-        {"role": "system", "content": "You are a data analyst fixing Python code."},
+        {"role": "system", "content": ANALYSIS_FIXER_SYSTEM},
         {"role": "user", "content": prompt}
     ])

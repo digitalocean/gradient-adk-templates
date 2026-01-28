@@ -183,6 +183,7 @@ KnowledgeBaseRAG/
 ├── .gradient/
 │   └── agent.yml          # Deployment configuration
 ├── main.py                 # Agent with KB query tool
+├── prompts.py              # System prompt (edit this to customize!)
 ├── requirements.txt        # Dependencies
 ├── .env.example           # Environment template
 └── README.md
@@ -223,6 +224,44 @@ executor = AgentExecutor(agent=agent, tools=[query_digitalocean_kb])
 ```
 
 ## Customization
+
+### Customizing the Agent's Behavior
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains the system prompt that defines how the agent behaves when answering questions from your knowledge base.
+
+**Example: Product Documentation Assistant**
+
+```python
+# In prompts.py, change SYSTEM_PROMPT to:
+SYSTEM_PROMPT = """You are a helpful product documentation assistant.
+When answering questions:
+- Use information from the knowledge base to provide accurate answers
+- If information is not in the knowledge base, say so clearly
+- Provide step-by-step instructions when relevant
+- Include links to relevant documentation pages when available"""
+```
+
+**Example: Customer Support Agent**
+
+```python
+SYSTEM_PROMPT = """You are a customer support agent for [Your Company].
+When helping users:
+- Be friendly and professional
+- Search the knowledge base to find accurate solutions
+- If you can't find an answer, offer to escalate to human support
+- Provide clear, actionable steps to resolve issues"""
+```
+
+**Example: Technical Expert**
+
+```python
+SYSTEM_PROMPT = """You are a technical expert assistant with access to internal documentation.
+When answering questions:
+- Provide detailed technical explanations
+- Reference specific documentation sections
+- Include code examples when applicable
+- Warn about common pitfalls or edge cases"""
+```
 
 ### Using Multiple Knowledge Bases
 

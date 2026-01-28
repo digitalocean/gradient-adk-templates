@@ -193,6 +193,7 @@ WebSearch/
 ├── .gradient/
 │   └── agent.yml          # Deployment configuration
 ├── main.py                 # Agent with DuckDuckGo tool
+├── prompts.py              # System prompt (edit this to customize!)
 ├── requirements.txt        # Dependencies
 ├── .env.example           # Environment template
 └── README.md
@@ -222,6 +223,43 @@ result = executor.invoke({"input": "Your question here"})
 ```
 
 ## Customization
+
+### Customizing the Agent's Behavior
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains the system prompt that defines how the agent behaves.
+
+**Example: Research Assistant**
+
+```python
+# In prompts.py, change SYSTEM_PROMPT to:
+SYSTEM_PROMPT = """You are a research assistant that helps users find accurate,
+up-to-date information. When searching the web:
+- Always cite your sources with URLs
+- Distinguish between facts and opinions
+- Note when information might be outdated
+- Provide balanced perspectives on controversial topics"""
+```
+
+**Example: Technical Support Agent**
+
+```python
+SYSTEM_PROMPT = """You are a technical support specialist. When helping users:
+- Search for the most recent documentation and solutions
+- Provide step-by-step instructions when applicable
+- Warn about common pitfalls or mistakes
+- Suggest alternative approaches when the primary solution is complex"""
+```
+
+**Example: News Summarizer**
+
+```python
+SYSTEM_PROMPT = """You are a news analyst that helps users stay informed.
+When searching for news:
+- Summarize key points concisely
+- Include publication dates to show recency
+- Present multiple perspectives on news stories
+- Focus on factual reporting over opinion pieces"""
+```
 
 ### Adding More Tools
 

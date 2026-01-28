@@ -23,6 +23,16 @@ from tools.database import DatabaseConnection, get_schema, format_results_as_tab
 from agents.nl2sql import execute_nl2sql, QueryResult
 from agents.data_analyst import run_analysis, AnalysisResult
 
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import (
+    get_intent_classification_prompt,
+    INTENT_CLASSIFIER_SYSTEM,
+    QUERY_SUMMARIZER_SYSTEM,
+    get_query_summary_prompt,
+    ANALYSIS_SUMMARIZER_SYSTEM,
+    get_analysis_summary_prompt,
+)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -122,25 +132,13 @@ def classify_intent(state: DataScienceState) -> DataScienceState:
     message = state["message"]
     logger.info(f"Classifying intent for: {message[:100]}...")
 
-    prompt = f"""Analyze this user message and classify their intent for a data science agent.
-
-User message: {message}
-
-Classify as one of:
-- "query": User wants to retrieve data from the database (e.g., "show me all flights", "how many customers")
-- "analyze": User wants analysis of data (e.g., "what's the average delay", "find patterns")
-- "visualize": User explicitly wants a chart, graph, or visualization
-- "schema": User wants to know about the database structure
-- "help": User needs help or has a general question
-
-Also determine if the request would benefit from a visualization (charts, graphs, plots).
-Rephrase the question clearly for processing."""
+    prompt = get_intent_classification_prompt(message)
 
     model = get_model(temperature=0.0)
     structured_model = model.with_structured_output(UserIntent)
 
     intent = structured_model.invoke([
-        {"role": "system", "content": "You classify user intent for a data science agent."},
+        {"role": "system", "content": INTENT_CLASSIFIER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -333,20 +331,16 @@ def generate_query_response(state: DataScienceState) -> DataScienceState:
         }
 
     # Generate summary using LLM
-    prompt = f"""Summarize these query results for the user.
-
-Question: {state.get('message', '')}
-
-Query: {query_result.query}
-
-Results ({query_result.row_count} rows):
-{query_result.formatted_result}
-
-Provide a brief, helpful summary of what the data shows."""
+    prompt = get_query_summary_prompt(
+        question=state.get('message', ''),
+        query=query_result.query,
+        row_count=query_result.row_count,
+        formatted_result=query_result.formatted_result
+    )
 
     model = get_model(temperature=0.3)
     response = model.invoke([
-        {"role": "system", "content": "You summarize data query results concisely."},
+        {"role": "system", "content": QUERY_SUMMARIZER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 
@@ -397,22 +391,16 @@ def generate_analysis_response(state: DataScienceState) -> DataScienceState:
         }
 
     # Generate summary
-    prompt = f"""Summarize these analysis results for the user.
-
-Question: {state.get('message', '')}
-
-Analysis explanation: {analysis_result.explanation}
-
-Output:
-{analysis_result.output}
-
-{"A visualization was generated." if images else "No visualization was created."}
-
-Provide a clear summary of the findings."""
+    prompt = get_analysis_summary_prompt(
+        question=state.get('message', ''),
+        explanation=analysis_result.explanation,
+        output=analysis_result.output,
+        has_visualization=bool(images)
+    )
 
     model = get_model(temperature=0.3)
     response = model.invoke([
-        {"role": "system", "content": "You summarize data analysis results clearly and concisely."},
+        {"role": "system", "content": ANALYSIS_SUMMARIZER_SYSTEM},
         {"role": "user", "content": prompt}
     ])
 

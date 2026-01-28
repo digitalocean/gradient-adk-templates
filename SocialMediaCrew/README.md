@@ -269,6 +269,7 @@ SocialMediaCrew/
 │   ├── image_generator.py     # fal fast-sdxl integration
 │   └── web_search.py          # Serper API search
 ├── main.py                     # LangGraph workflow
+├── prompts.py                  # All agent prompts (edit this to customize!)
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -292,6 +293,74 @@ Scores content on quality (1-10), checks brand safety, and assesses viral potent
 Analyzes the approved content and creates a focused image prompt with subject and art style.
 
 ## Customization
+
+### Customizing the Prompts
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains all the prompts used by the five agents, plus platform guidelines and best practices.
+
+**Key prompts you can customize:**
+
+| Prompt/Function | Agent | Purpose |
+|----------------|-------|---------|
+| `get_research_prompt()` | Researcher | How to synthesize research |
+| `get_content_creation_prompt()` | Copywriter | Content creation guidelines |
+| `get_revision_prompt()` | Copywriter | How to handle revisions |
+| `get_optimization_prompt()` | Social Media Manager | Optimization criteria |
+| `get_review_prompt()` | Reviewer | Review criteria and thresholds |
+| `get_image_prompt_design()` | Image Designer | Image prompt generation |
+| `TWITTER_GUIDELINES` | Copywriter | Platform-specific rules |
+| `TWITTER_BEST_PRACTICES` | Social Media Manager | Platform best practices |
+
+**Example: Change Brand Voice**
+
+```python
+# In prompts.py, modify get_copywriter_system:
+def get_copywriter_system(platform: str) -> str:
+    return f"""You are a {platform} content creator for a tech startup.
+Your voice is:
+- Casual and friendly, but smart
+- Uses tech analogies and references
+- Never corporate or salesy
+- Occasionally self-deprecating
+- Loves a good pun"""
+```
+
+**Example: Stricter Review Criteria**
+
+```python
+# In prompts.py, modify get_review_prompt to add criteria:
+def get_review_prompt(platform: str, content_text: str, ...) -> str:
+    return f"""...
+**Additional Review Criteria for Our Brand:**
+- Must include at least one data point or statistic
+- No competitors mentioned by name
+- CTA must be soft (no hard sell)
+- Must align with our values: innovation, accessibility, sustainability
+..."""
+```
+
+**Example: Add TikTok Support**
+
+```python
+# In prompts.py, add new guidelines:
+TIKTOK_GUIDELINES = """
+- Hook must land in first 3 seconds
+- Keep text concise - users are watching, not reading
+- Reference trending sounds where applicable
+- Include a "call to duet" or "call to stitch" CTA
+- End with a question to drive comments
+"""
+
+TIKTOK_BEST_PRACTICES = """
+- Most viral length: 15-60 seconds
+- Use trending hashtags sparingly (2-3 max)
+- Personal stories outperform polished content
+- Behind-the-scenes performs well
+- Educational content with a twist works great
+"""
+
+# Then update get_platform_guidelines and get_platform_best_practices
+```
 
 ### Adding a New Platform
 

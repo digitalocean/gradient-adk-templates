@@ -197,6 +197,7 @@ MCP/
 ├── .gradient/
 │   └── agent.yml          # Deployment configuration
 ├── main.py                 # MCP client setup and agent
+├── prompts.py              # System message (edit this to customize!)
 ├── requirements.txt        # Dependencies
 ├── .env.example           # Environment template
 └── README.md
@@ -238,6 +239,44 @@ agent = create_react_agent(llm, tools)
 ```
 
 ## Customization
+
+### Customizing the Agent's Behavior
+
+The easiest way to adapt this template is by editing **`prompts.py`**. This file contains the system message that guides how the agent uses the MCP tools.
+
+**Example: Research Assistant**
+
+```python
+# In prompts.py, change SYSTEM_MESSAGE to:
+SYSTEM_MESSAGE = """You are a research assistant with access to web search and calculation tools.
+When helping users:
+- Always search for the most recent information
+- Cite your sources with URLs when possible
+- Use the calculator for any numerical analysis
+- Provide balanced perspectives on complex topics"""
+```
+
+**Example: Financial Assistant**
+
+```python
+SYSTEM_MESSAGE = """You are a financial assistant with access to web search and calculation tools.
+When answering financial questions:
+- Search for current market data and news
+- Use the calculator for precise financial calculations
+- Always note that you're not providing financial advice
+- Be clear about the date of any market information"""
+```
+
+**Example: Technical Assistant**
+
+```python
+SYSTEM_MESSAGE = """You are a technical assistant with access to web search and calculation tools.
+When helping with technical questions:
+- Search for documentation and solutions
+- Use the calculator for performance calculations or conversions
+- Provide step-by-step explanations when helpful
+- Note any limitations or caveats in your answers"""
+```
 
 ### Adding More MCP Servers
 

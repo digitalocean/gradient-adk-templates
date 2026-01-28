@@ -8,6 +8,9 @@ from pydantic import BaseModel
 
 from langchain_community.tools import DuckDuckGoSearchRun
 
+# Import prompts - edit prompts.py to customize agent behavior
+from prompts import SYSTEM_PROMPT
+
 search = DuckDuckGoSearchRun()
 
 
@@ -23,7 +26,7 @@ llm = ChatGradient(
 )
 
 agent = create_agent(
-    llm, tools=[web_search], system_prompt="You are a helpful assistant."
+    llm, tools=[web_search], system_prompt=SYSTEM_PROMPT
 )
 
 

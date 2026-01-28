@@ -1,14 +1,11 @@
 from langgraph.graph import MessagesState
 from langchain_gradient import ChatGradient
 
-GENERATE_PROMPT = (
-    "You are an assistant for question-answering tasks. "
-    "Use the following pieces of retrieved context to answer the question. "
-    "If you don't know the answer, just say that you don't know. "
-    "Use three sentences maximum and keep the answer concise.\n"
-    "Question: {question} \n"
-    "Context: {context}"
-)
+# Import prompts from central prompts.py - edit that file to customize
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import GENERATE_PROMPT
 
 answer_model = ChatGradient(
     model="openai-gpt-4.1",

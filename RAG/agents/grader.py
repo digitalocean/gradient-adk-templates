@@ -3,13 +3,11 @@ from langgraph.graph import MessagesState
 from langchain_gradient import ChatGradient
 from pydantic import BaseModel, Field
 
-GRADE_PROMPT = (
-    "You are a grader assessing relevance of a retrieved document to a user question. \n "
-    "Here is the retrieved document: \n\n {context} \n\n"
-    "Here is the user question: {question} \n"
-    "If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n"
-    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
-)
+# Import prompts from central prompts.py - edit that file to customize
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import GRADE_PROMPT
 
 
 class GradeDocuments(BaseModel):
