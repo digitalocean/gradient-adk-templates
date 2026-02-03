@@ -1,0 +1,9 @@
+gradient-adk
+gradient>=3.9.0
+langchain-gradient
+langchain>=0.3.0
+langchain-core>=0.3.0
+pydantic>=2.6,<3
+python-dotenv
+httpx
+typing_extensions

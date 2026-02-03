@@ -1,19 +1,14 @@
 from langgraph.graph import MessagesState
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 
-REWRITE_PROMPT = (
-    "Look at the input and try to reason about the underlying semantic intent / meaning.\n"
-    "Here is the initial question:"
-    "\n ------- \n"
-    "{question}"
-    "\n ------- \n"
-    "Formulate an improved question:"
-)
+# Import prompts from central prompts.py - edit that file to customize
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompts import REWRITE_PROMPT
 
-rewriter_model = ChatOpenAI(
+rewriter_model = ChatGradient(
     model="openai-gpt-4.1",
-    base_url="https://inference.do-ai.run/v1",
-    api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
     temperature=0
 )
 
