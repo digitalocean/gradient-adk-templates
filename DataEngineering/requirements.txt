@@ -1,0 +1,10 @@
+gradient-adk
+langgraph
+langchain
+langchain-core
+langchain-openai
+gradient
+snowflake-connector-python
+dbt-snowflake
+python-dotenv
+pydantic>=2.0
