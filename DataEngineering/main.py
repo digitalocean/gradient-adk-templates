@@ -30,7 +30,7 @@ from typing import Dict, Literal, TypedDict, Annotated, Sequence
 import operator
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_openai import ChatOpenAI
+from langchain_gradient import ChatGradient
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from gradient_adk import entrypoint
 
@@ -172,9 +172,8 @@ If it's a new topic, you can start fresh while still being aware of what was dis
 
 def get_model(temperature: float = 0.1):
     """Create the LLM model."""
-    return ChatOpenAI(
+    return ChatGradient(
         model="openai-gpt-4.1",
-        base_url="https://inference.do-ai.run/v1",
         api_key=os.getenv("DIGITALOCEAN_INFERENCE_KEY"),
         temperature=temperature,
     )

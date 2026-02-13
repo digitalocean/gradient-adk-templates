@@ -2,7 +2,7 @@ gradient-adk
 langgraph
 langchain
 langchain-core
-langchain-openai
+langchain-gradient
 gradient
 snowflake-connector-python
 dbt-snowflake
