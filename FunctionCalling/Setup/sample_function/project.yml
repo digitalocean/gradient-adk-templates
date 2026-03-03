@@ -1,0 +1,6 @@
+packages:
+  - name: converter
+    functions:
+      - name: convert
+        runtime: python:default
+        web: true
