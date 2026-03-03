@@ -1,3 +1,4 @@
+--only-binary :all:
 gradient-adk
 langgraph
 langchain
