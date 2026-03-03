@@ -19,6 +19,7 @@ Each template demonstrates a specific agent architecture or capability. Choose b
 |----------|----------|--------------|------------|
 | [StateGraph](./StateGraph/) | Learn LangGraph basics | Conditional routing, state management | Beginner |
 | [WebSearch](./WebSearch/) | Simple tool-using agent | Tool binding, DuckDuckGo search | Beginner |
+| [FunctionCalling](./FunctionCalling/) | Invoke DO serverless functions | Dynamic tool creation, serverless integration | Beginner |
 | [KnowledgeBaseRAG](./KnowledgeBaseRAG/) | Query DigitalOcean Knowledge Bases | Knowledge Base integration | Beginner |
 | [RAG](./RAG/) | Document Q&A over PDFs | Multi-agent retrieval, query rewriting | Intermediate |
 | [MCP](./MCP/) | Connect to external tools | Model Context Protocol, multi-tool agents | Intermediate |
@@ -78,6 +79,8 @@ gradient agent deploy
 **[StateGraph](./StateGraph/)** - A joke generator that demonstrates LangGraph fundamentals: state management, conditional routing, and multi-step LLM chains. Start here to understand how Gradient ADK agents work.
 
 **[WebSearch](./WebSearch/)** - A minimal agent that uses DuckDuckGo for web search. Shows how to bind tools to LLMs using LangChain's `create_agent` helper function.
+
+**[FunctionCalling](./FunctionCalling/)** - Connect an agent to any DigitalOcean Serverless Function. Features a single config file that defines your function's interface (input parameters and response schema), and the agent dynamically builds a tool the LLM can call. Includes a setup script that deploys a sample unit converter so you can try it out of the box.
 
 **[KnowledgeBaseRAG](./KnowledgeBaseRAG/)** - Query your DigitalOcean-managed Knowledge Base. Demonstrates integration with DigitalOcean's Knowledge Base service for document retrieval.
 
