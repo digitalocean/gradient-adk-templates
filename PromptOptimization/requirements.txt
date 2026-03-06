@@ -1,0 +1,9 @@
+gradient-adk
+gradient
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-gradient
+langgraph
+dspy>=2.6.0
+python-dotenv
+pydantic>=2.6,<3

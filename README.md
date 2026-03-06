@@ -28,6 +28,7 @@ Each template demonstrates a specific agent architecture or capability. Choose b
 | [DataScience](./DataScience/) | Natural language to SQL | Database queries, self-healing, visualization | Advanced |
 | [DeepSearch](./DeepSearch/) | Multi-step research | Human-in-the-loop, parallel execution | Advanced |
 | [DataEngineering](./DataEngineering/) | Snowflake + dbt pipelines | Pipeline development, data quality, dbt | Advanced |
+| [PromptOptimization](./PromptOptimization/) | Automated prompt tuning | DSPy MIPROv2, Gradient evaluations, version management | Advanced |
 
 ## Quick Start
 
@@ -102,6 +103,8 @@ gradient agent deploy
 **[DeepSearch](./DeepSearch/)** - A research agent with human-in-the-loop plan approval and parallel section research using LangGraph's Send API. Produces comprehensive reports with citations.
 
 **[DataEngineering](./DataEngineering/)** - A data engineering assistant that helps build and manage Snowflake data pipelines using dbt. Can create transformation models, run data quality checks, troubleshoot pipeline failures, and explore your data warehouse. Includes a full sample e-commerce dataset with realistic data quality issues and a complete dbt project with staging, intermediate, and mart layers.
+
+**[PromptOptimization](./PromptOptimization/)** - An automated prompt optimization workflow using DSPy MIPROv2 to improve a customer support agent's system prompt. Features two-tier evaluation (DSPy custom metrics + Gradient platform evaluations), prompt version tracking with rollback, and a guided CLI for the full optimize-evaluate-deploy cycle.
 
 ## Common Patterns
 
