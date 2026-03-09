@@ -116,7 +116,7 @@ def format_version_summary(version: dict) -> str:
     if "accuracy" in scores:
         score_parts.append(f"acc={scores['accuracy']:.0%}")
     if "response_quality" in scores:
-        score_parts.append(f"quality={scores['response_quality']:.1f}/10")
+        score_parts.append(f"quality={scores['response_quality']:.1f}/5")
     score_str = ", ".join(score_parts) if score_parts else "not evaluated"
 
     active = get_active_name()

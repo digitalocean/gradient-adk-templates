@@ -22,30 +22,38 @@ from dotenv import load_dotenv
 from langchain_gradient import ChatGradient
 
 import prompt_manager
-from prompts import CATEGORY_DEFINITIONS, RESPONSE_GUIDELINES, build_prompt
+from prompts import CATEGORY_LABELS, build_prompt
 
 load_dotenv()
 
 DATA_DIR = Path(__file__).parent / "data"
-DEFAULT_MODEL = "openai-gpt-4.1"
 
-JUDGE_PROMPT = """Rate the quality of this customer support response on a scale of 1-10.
+# The agent model must match what main.py uses at inference — a smaller,
+# cheaper model whose baseline performance DSPy optimization improves.
+AGENT_MODEL = "llama3-8b-instruct"
+# The judge model must be stronger than the agent to reliably score
+# response quality. It is only used during evaluation, not at inference.
+JUDGE_MODEL = "openai-gpt-4.1"
+
+JUDGE_PROMPT = """You are evaluating a customer support agent's response. Score it using the rubric below.
 
 Customer email: {email}
-Category (correct): {correct_category}
-Category (predicted): {predicted_category}
+Correct category: {correct_category}
+Predicted category: {predicted_category}
 Expected traits: {expected_traits}
 
 Agent response:
 {response}
 
-Score the response considering:
-- Did it correctly address the customer's issue?
-- Is the tone empathetic and professional?
-- Does it provide actionable next steps?
-- Does it match the expected traits?
+Rubric (pick exactly one):
 
-Respond with ONLY a number from 1 to 10."""
+5 - Excellent: Correctly addresses the customer's issue, empathetic and professional tone, provides specific and actionable next steps, matches expected traits.
+4 - Good: Addresses the issue adequately with minor gaps, professional tone, provides next steps that could be more specific.
+3 - Acceptable: Partially addresses the issue, tone is adequate but not empathetic, next steps are vague or generic.
+2 - Poor: Misses key aspects of the issue, tone is robotic or dismissive, next steps are missing or unhelpful.
+1 - Unacceptable: Does not address the customer's issue, unprofessional tone, no actionable guidance, or response is incoherent.
+
+Respond with ONLY a single number from 1 to 5."""
 
 
 def load_dataset(path: Path) -> list[dict]:
@@ -61,12 +69,11 @@ def run_agent_on_email(email_text: str, version: dict) -> tuple[str, str]:
     """Run the agent's classify+respond logic on a single email. Returns (category, response)."""
     prompt = build_prompt(
         system_instruction=version["system_instruction"],
-        category_definitions=CATEGORY_DEFINITIONS,
-        response_guidelines=RESPONSE_GUIDELINES,
+        category_labels=CATEGORY_LABELS,
         few_shot_examples=version.get("few_shot_examples", ""),
     )
 
-    llm = ChatGradient(model=DEFAULT_MODEL, temperature=0.0)
+    llm = ChatGradient(model=AGENT_MODEL, temperature=0.0)
     chain = prompt | llm
     result = chain.invoke({"email_text": email_text})
     content = result.content
@@ -81,6 +88,9 @@ def run_agent_on_email(email_text: str, version: dict) -> tuple[str, str]:
     response_text = re.sub(
         r"^Category:\s*\w+\s*\n?", "", content, count=1, flags=re.IGNORECASE
     ).strip()
+    response_text = re.sub(
+        r"^Response:\s*", "", response_text, count=1, flags=re.IGNORECASE
+    ).strip()
 
     return category, response_text
 
@@ -92,8 +102,8 @@ def judge_response(
     expected_traits: str,
     response: str,
 ) -> float:
-    """Use an LLM to judge response quality on a 1-10 scale."""
-    llm = ChatGradient(model=DEFAULT_MODEL, temperature=0.0)
+    """Use an LLM judge to score response quality on a 1-5 rubric."""
+    llm = ChatGradient(model=JUDGE_MODEL, temperature=0.0)
     prompt_text = JUDGE_PROMPT.format(
         email=email,
         correct_category=correct_category,
@@ -103,9 +113,10 @@ def judge_response(
     )
     result = llm.invoke([{"role": "user", "content": prompt_text}])
     try:
-        return float(re.search(r"\d+", result.content).group())
+        score = float(re.search(r"[1-5]", result.content).group())
+        return max(1.0, min(5.0, score))
     except (AttributeError, ValueError):
-        return 5.0
+        return 3.0
 
 
 def evaluate_version(version_name: str, dataset_path: Path = DATA_DIR / "val.csv") -> dict:
@@ -143,14 +154,14 @@ def evaluate_version(version_name: str, dataset_path: Path = DATA_DIR / "val.csv
                 category_results[expected_cat]["correct"] += 1
 
         status = "OK" if cat_correct else "MISS"
-        print(f"  [{i+1}/{len(dataset)}] {status} | expected={expected_cat} got={predicted_cat} | quality={quality:.0f}/10")
+        print(f"  [{i+1}/{len(dataset)}] {status} | expected={expected_cat} got={predicted_cat} | quality={quality:.0f}/5")
 
     accuracy = correct / len(dataset) if dataset else 0
     avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
 
     print("-" * 60)
     print(f"Classification Accuracy: {accuracy:.1%} ({correct}/{len(dataset)})")
-    print(f"Avg Response Quality:    {avg_quality:.1f}/10")
+    print(f"Avg Response Quality:    {avg_quality:.1f}/5")
     print()
     print("Per-category breakdown:")
     for cat, stats in category_results.items():

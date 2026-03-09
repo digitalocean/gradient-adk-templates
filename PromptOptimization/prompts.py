@@ -5,9 +5,8 @@ This file defines the LangChain PromptTemplates used by the agent.
 The prompt_manager loads optimized versions of these fields from prompt_versions/.
 
 Customization:
-- Edit BASELINE_SYSTEM_INSTRUCTION to change the default behavior
-- Edit CATEGORY_DEFINITIONS to add/remove/rename categories
-- Edit RESPONSE_GUIDELINES to change response style
+- Edit BASELINE_SYSTEM_INSTRUCTION to change the default behavior and response style
+- Edit CATEGORY_LABELS to add/remove/rename categories
 - Run `python optimize.py` to automatically optimize these prompts with DSPy
 """
 
@@ -22,18 +21,14 @@ BASELINE_SYSTEM_INSTRUCTION = (
     "the provided categories and write a helpful response."
 )
 
-CATEGORY_DEFINITIONS = """Categories:
-- billing: Payment issues, charges, refunds, invoices, pricing questions
-- technical: Bugs, errors, performance issues, configuration problems, API issues
-- account: Account settings, access, permissions, security, profile changes
-- general: Product questions, feature inquiries, comparisons, documentation requests"""
+# The category labels and response format are fixed so the parser in main.py
+# can always match on them. DSPy can add its own definitions of what each
+# category means during optimization — the labels and format never change.
+CATEGORY_LABELS = """Categories: billing, technical, account, general"""
 
-RESPONSE_GUIDELINES = """Guidelines for your response:
-- Be empathetic and professional
-- Acknowledge the customer's concern
-- Provide actionable next steps
-- Keep responses concise but thorough
-- If you need more information, ask specific questions"""
+RESPONSE_FORMAT = """Response format:
+Category: <category>
+Response: <response>"""
 
 # =============================================================================
 # PROMPT TEMPLATE ASSEMBLY
@@ -41,29 +36,27 @@ RESPONSE_GUIDELINES = """Guidelines for your response:
 
 SYSTEM_TEMPLATE = """{system_instruction}
 
-{category_definitions}
+{category_labels}
 
-{response_guidelines}
+{response_format}
 
 {few_shot_examples}"""
 
 HUMAN_TEMPLATE = """Customer email:
-{email_text}
-
-Respond with the category on the first line as "Category: <category>" followed by your response."""
+{email_text}"""
 
 
 def build_prompt(
     system_instruction: str = BASELINE_SYSTEM_INSTRUCTION,
-    category_definitions: str = CATEGORY_DEFINITIONS,
-    response_guidelines: str = RESPONSE_GUIDELINES,
+    category_labels: str = CATEGORY_LABELS,
+    response_format: str = RESPONSE_FORMAT,
     few_shot_examples: str = "",
 ) -> ChatPromptTemplate:
     """Build a ChatPromptTemplate from the given components."""
     system_content = SYSTEM_TEMPLATE.format(
         system_instruction=system_instruction,
-        category_definitions=category_definitions,
-        response_guidelines=response_guidelines,
+        category_labels=category_labels,
+        response_format=response_format,
         few_shot_examples=few_shot_examples,
     ).strip()
 

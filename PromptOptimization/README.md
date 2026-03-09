@@ -10,8 +10,7 @@ Automatically optimize your agent's system prompt using DSPy, evaluate with both
 | Agent orchestration | LangGraph StateGraph |
 | Prompt structure | LangChain ChatPromptTemplate |
 | LLM inference | DigitalOcean Serverless |
-| Local evaluation | LLM-as-judge + exact match |
-| Platform evaluation | Gradient agent evaluate |
+| Evaluation | Local DSPy metrics + Gradient platform evaluation |
 | Deployment | Gradient ADK |
 
 ## Quick Start
@@ -34,29 +33,158 @@ curl -X POST http://localhost:8080/run \
   -H "Content-Type: application/json" \
   -d '{"prompt": "I was charged twice for my subscription last month."}'
 
-# Run the optimization workflow
-python optimize.py
+# Run the interactive optimization workflow
+python interactive.py
+
+# Or run optimization directly (scriptable)
+python optimize.py light my_version_name
 ```
+
+Example response from the agent:
+
+```json
+{
+  "output": "Category: billing\nResponse: I'm sorry to hear about the duplicate charge on your subscription. I understand how frustrating unexpected billing issues can be. Here's what I'd recommend:\n\n1. Log in to your account and navigate to the Billing section to verify the duplicate charge\n2. If confirmed, click \"Request Refund\" next to the duplicate transaction\n3. If you don't see that option, contact our billing team directly at billing@support.example.com\n\nThe refund typically processes within 3-5 business days. Please don't hesitate to reach out if you need further assistance."
+}
+```
+
+## Example: Before and After Optimization
+
+The baseline prompt is intentionally minimal — just a one-line instruction with category names and a response format:
+
+**Before (baseline):**
+```
+[System Instruction]
+You are a customer support agent. Classify the customer's email into one of
+the provided categories and write a helpful response.
+
+[Category Labels]  (fixed)
+Categories: billing, technical, account, general
+
+[Response Format]  (fixed)
+Response format:
+Category: <category>
+Response: <response>
+
+[Few-Shot Examples]
+(none)
+```
+
+After running MIPROv2 optimization, DSPy rewrites the system instruction with detailed guidance and adds bootstrapped few-shot examples. The category labels and response format stay fixed so parsing never breaks:
+
+**After (optimized):**
+```
+[System Instruction]
+You are a customer support agent for a cloud platform. Given a customer email,
+classify it into one of the categories and write a professional, empathetic
+response with actionable next steps.
+
+Carefully analyze the customer's email to determine the primary concern.
+Use the following guidelines for classification:
+- billing: payment issues, charges, invoices, refunds, subscription changes
+- technical: infrastructure problems, API errors, deployment failures, performance
+- account: login issues, permissions, team management, account settings
+- general: documentation questions, feature requests, feedback, onboarding
+
+Write a response that acknowledges the customer's specific situation, shows
+empathy, and provides concrete next steps they can take to resolve their issue.
+
+[Category Labels]  (fixed)
+Categories: billing, technical, account, general
+
+[Response Format]  (fixed)
+Response format:
+Category: <category>
+Response: <response>
+
+[Few-Shot Examples]
+Examples:
+
+Email: My payment failed and now I can't access any of my droplets. I have
+production workloads running and this is urgent.
+Category: billing
+Response: I completely understand the urgency of your situation, and I'm sorry
+you're experiencing this disruption. Since your payment failure is affecting
+access to your production droplets, let me help you resolve this quickly:
+1. Navigate to Settings > Billing and update your payment method
+2. Once updated, click "Retry Payment" on the outstanding invoice
+3. Access should be restored within 5-10 minutes of successful payment
+If your workloads need immediate attention, our billing team can expedite
+this — reply here and I'll escalate right away.
+```
+
+DSPy discovers that adding category definitions, tone guidance, and real examples from the training data improves both classification accuracy and response quality — even though the underlying LLM (Llama 3 8B) is the same.
 
 ## How It Works
 
-### The Agent (`main.py`)
+### Agent Orchestration with LangGraph (`main.py`)
 
-A LangGraph `StateGraph` that takes a customer email, classifies it into a category, and generates a response. The system prompt is loaded from the active prompt version (managed by `prompt_manager.py`).
+The agent is built as a LangGraph `StateGraph` — a stateful, node-based execution graph that makes the processing pipeline explicit and extensible. The graph maintains a typed state (`SupportState`) that tracks the email text, predicted category, generated response, and which prompt version produced the result:
 
 ```
 START -> classify_and_respond -> END
 ```
 
-The agent uses a `ChatPromptTemplate` with pluggable components:
-- **System instruction** (what DSPy optimizes)
-- **Category definitions** (the classification taxonomy)
-- **Response guidelines** (tone and format rules)
-- **Few-shot examples** (injected by DSPy during optimization)
+LangGraph handles orchestration so the agent's behaviour is deterministic and inspectable, and prompt version tracking is embedded directly into the graph state.
 
-### Optimization Workflow (`optimize.py`)
+### Structured Prompts with LangChain (`prompts.py`)
 
-An interactive CLI that guides you through the full optimize-evaluate-deploy cycle:
+The agent's prompt is assembled from modular components using LangChain's `ChatPromptTemplate`:
+
+- **System instruction** — The behavioural directive, response style, and any category definitions that DSPy produces during optimization
+- **Category labels** — The fixed list of category names (`billing, technical, account, general`)
+- **Response format** — The fixed output structure (`Category: <category>\nResponse: <response>`)
+- **Few-shot examples** — Demonstrations bootstrapped during optimization
+
+DSPy optimizes the system instruction and few-shot examples together — MIPROv2 rewrites the instruction and selects which demonstrations to include based on what combination scores best on the training metric. This means DSPy can improve the response guidelines, add category definitions, adjust tone, or restructure the instruction however it sees fit.
+
+The category labels and response format are intentionally kept as fixed, non-optimizable sections. The parsing logic in `main.py` depends on the exact label names and the `Category:` / `Response:` prefix format to extract structured output. By fixing these, DSPy can freely optimize *everything else* — response style, category definitions, instruction framing — without risk of breaking the parser. DSPy is free to add its own definitions of what each category means within the optimized instruction; it just can't rename the labels themselves.
+
+### Prompt Version Management (`prompt_manager.py`)
+
+Every optimization run produces a new prompt version saved as a JSON file in `prompt_versions/`. Each version stores the system instruction, few-shot examples, evaluation scores, optimizer metadata, and a timestamp. You can compare any two versions side-by-side, set any version as active, and rollback instantly — all before deploying. The active version is what the agent uses at runtime.
+
+### How MIPROv2 Optimizes Your Prompt (`optimize.py`)
+
+[MIPROv2](https://dspy.ai/api/optimizers/MIPROv2/) (Multi-prompt Instruction PRoposal Optimizer v2) is a DSPy optimizer that automatically improves both the system instruction and few-shot examples through a multi-stage process:
+
+1. **Bootstrapping** — MIPROv2 runs the agent on training examples and collects successful input-output traces. These become candidate few-shot demonstrations.
+2. **Instruction proposal** — A separate "proposer" LLM analyzes the task signature, training data, and bootstrapped traces to generate candidate system instructions that might improve performance.
+3. **Bayesian search** — MIPROv2 treats the choice of instruction and demo combination as a hyperparameter optimization problem. It uses a Bayesian surrogate model to efficiently search the space of (instruction, demos) combinations, evaluating each candidate against the training set using your metric function.
+4. **Selection** — The combination that scores highest on the metric is returned as the optimized program.
+
+The optimization intensity (light / medium / heavy) controls how many trials the Bayesian search runs — more trials explore more combinations but take longer and make more LLM calls.
+
+All LLM calls during optimization are routed through DigitalOcean's Serverless Inference endpoint, so no external API keys are needed.
+
+### System Prompt Quality Measurement
+
+The template measures prompt quality at two levels:
+
+**During optimization** — DSPy uses a composite metric (`support_metric` in `optimize.py`) that combines classification accuracy (60%) with a response quality heuristic (40%). The heuristic checks for non-trivial length, empathetic language, and actionable guidance. This metric is fast enough to run hundreds of times during the Bayesian search without incurring excessive LLM calls.
+
+**During evaluation** — The local evaluation harness (`evaluate.py`) runs the agent on a held-out validation set and measures:
+- **Classification accuracy** — exact match on predicted vs expected category, with per-category breakdown
+- **Response quality** — an LLM-as-judge (GPT-4.1) scores each response on a 1-5 rubric anchored to clear level descriptions (Excellent / Good / Acceptable / Poor / Unacceptable), checking whether it addresses the customer's issue, uses an appropriate tone, and provides actionable next steps
+
+These scores are saved to the prompt version file, so you can track quality across optimization runs and make informed decisions about which version to deploy.
+
+### Two-Tier Evaluation: Local vs Gradient
+
+This template provides two complementary evaluation approaches for different stages of the workflow:
+
+**Local DSPy Evaluation (option 2)** runs during development, before deployment. It uses `data/val.csv` — a validation set of 24 labeled examples with expected categories and response traits. The evaluation calls the LLM directly (via DO Serverless) and computes custom metrics: exact-match accuracy and LLM-as-judge quality scores. This is fast, repeatable, and useful for comparing prompt versions head-to-head during iteration.
+
+**Gradient Evaluation (option 7)** runs after deployment against the live agent endpoint. It uses a separate held-out dataset (`data/gradient_eval_dataset.csv`) with examples that were **not** used during optimization or local evaluation. Gradient's built-in evaluator provides platform-grade metrics across multiple categories:
+- **Correctness** — general hallucinations, instruction following
+- **User outcomes** — goal progress and completion
+- **Safety & security** — PII leak detection, toxicity, prompt injection
+
+The key difference: local evaluation tells you whether the optimized prompt is better than the baseline on *your* metrics. Gradient evaluation tells you whether the deployed agent meets production quality standards on a broader set of concerns (hallucinations, safety, user outcomes) using examples the agent has never seen. Use both — local evaluation for fast iteration, Gradient evaluation for deployment validation.
+
+### Interactive Workflow (`interactive.py`)
+
+A menu-driven CLI that guides you through the full optimize-evaluate-deploy cycle. It imports the optimization engine from `optimize.py`, the evaluation harness from `evaluate.py`, and version management from `prompt_manager.py`:
 
 ```
 === PROMPT OPTIMIZATION WORKFLOW ===
@@ -68,71 +196,38 @@ Active prompt: v1_baseline
 
 --- Evaluate ---
 [2] Evaluate prompt locally (DSPy metrics)
-[3] Evaluate with Gradient (local agent)
 
 --- Manage Versions ---
-[4] Compare prompt versions
-[5] Set active prompt version
-[6] Rollback to previous version
+[3] Compare prompt versions
+[4] Set active prompt version
+[5] Rollback to previous version
 
 --- Deploy ---
-[7] Deploy agent to Gradient
-[8] Evaluate deployed agent (Gradient)
+[6] Deploy agent to Gradient
+[7] Evaluate deployed agent (Gradient)
 ```
-
-### Two-Tier Evaluation
-
-This template showcases two complementary evaluation approaches:
-
-**DSPy Evaluation (option 2)** — Fast, custom metrics run locally:
-- Classification accuracy (exact match on category)
-- Response quality (LLM-as-judge, 1-10 scale)
-- Per-category breakdown
-- Side-by-side version comparison
-
-**Gradient Evaluation (options 3 & 8)** — Platform-grade evaluation with 19 built-in metrics:
-- Correctness (general hallucinations)
-- Instruction Following
-- Tone analysis
-- PII leak detection
-- Prompt injection detection
-- And more (see [Gradient Evaluation Metrics](https://docs.digitalocean.com/products/gradient-ai-platform/reference/agent-evaluation-metrics/))
-
-Option 3 runs Gradient evaluation **before deployment** by starting the agent locally with `gradient agent run` and evaluating against it. Option 8 evaluates the deployed agent.
-
-### Prompt Version Management
-
-Every optimization run saves a new prompt version in `prompt_versions/`. Each version stores:
-- The optimized system instruction
-- Few-shot examples (if bootstrapped by DSPy)
-- Evaluation scores
-- Metadata (optimizer, timestamp)
-
-You can compare versions, set any version as active, and rollback at any time.
 
 ## Recommended Workflow
 
-1. **Baseline** — Run `python optimize.py` → option `[2]` to evaluate the baseline prompt
+1. **Baseline** — Run `python interactive.py` → option `[2]` to evaluate the baseline prompt
 2. **Optimize** — Option `[1]` to run DSPy MIPROv2 optimization (start with "light")
 3. **Evaluate locally** — Option `[2]` to see accuracy and quality scores
-4. **Evaluate with Gradient** — Option `[3]` to get platform metrics on the local agent
-5. **Compare** — Option `[4]` to compare baseline vs optimized side-by-side
-6. **Activate** — Option `[5]` to set the best version as active
-7. **Deploy** — Option `[7]` to deploy to Gradient
-8. **Validate** — Option `[8]` to run Gradient evaluation on the deployed agent
+4. **Compare** — Option `[3]` to compare baseline vs optimized side-by-side
+5. **Activate** — Option `[4]` to set the best version as active
+6. **Deploy** — Option `[6]` to deploy to Gradient
+7. **Validate** — Option `[7]` to run Gradient evaluation on the deployed agent
 
 ## Customizing for Your Use Case
 
 ### Change the classification categories
 
-Edit `CATEGORY_DEFINITIONS` in `prompts.py`:
+Edit `CATEGORY_LABELS` in `prompts.py` and update `VALID_CATEGORIES` in `main.py` to match:
 
 ```python
-CATEGORY_DEFINITIONS = """Categories:
-- sales: Purchase inquiries, pricing, quotes
-- support: Technical issues, bug reports
-- feedback: Feature requests, complaints, suggestions"""
+CATEGORY_LABELS = """Categories: sales, support, feedback"""
 ```
+
+You only need to list the label names — DSPy can learn to define them during optimization based on your training data.
 
 ### Use your own training data
 
@@ -143,7 +238,7 @@ email_text,category,good_response_traits
 "Your customer message here",your_category,"Expected response characteristics"
 ```
 
-Aim for 30-50+ training examples and 15-20 validation examples.
+Aim for 30-50+ training examples and 15-20 validation examples. Include ambiguous cross-category emails (e.g., "My payment failed and now I can't access my services") — these are the cases where prompt optimization makes the biggest difference, since the baseline instruction has no disambiguation rules. Also update `data/gradient_eval_dataset.csv` with held-out examples in the Gradient query format (see the existing file for the schema).
 
 ### Change the evaluation metric
 
@@ -151,11 +246,7 @@ Edit `support_metric()` in `optimize.py` to weight what matters for your use cas
 
 ### Swap the LLM model
 
-Change `DEFAULT_MODEL` in `main.py` and `TASK_MODEL`/`OPTIMIZER_MODEL` in `optimize.py`.
-
-Available models on DO Serverless:
-- `openai-gpt-4.1` — Most capable
-- `openai-gpt-oss-120b` — Open source, cost-effective
+Change `DEFAULT_MODEL` in `main.py` and `TASK_MODEL`/`OPTIMIZER_MODEL` in `optimize.py`. See the [full list of available models](https://docs.digitalocean.com/products/gradient-ai-platform/details/models/) on the Gradient AI platform.
 
 ## Project Structure
 
@@ -165,36 +256,20 @@ PromptOptimization/
 │   └── agent.yml              # Gradient deployment config
 ├── main.py                    # Agent entrypoint (LangGraph + ChatPromptTemplate)
 ├── prompts.py                 # Prompt template components
-├── optimize.py                # Interactive optimization workflow (DSPy + Gradient)
+├── optimize.py                # DSPy MIPROv2 optimization engine
+├── interactive.py             # Interactive CLI workflow (menu-driven)
 ├── evaluate.py                # Local evaluation harness
 ├── prompt_manager.py          # Prompt version tracking
 ├── data/
-│   ├── train.csv              # Training examples (40 labeled)
-│   ├── val.csv                # Validation examples (20 labeled)
-│   └── eval_dataset.csv       # Gradient evaluation dataset
+│   ├── train.csv              # Training examples (48 labeled)
+│   ├── val.csv                # Validation examples (24 labeled)
+│   ├── eval_dataset.csv       # Local evaluation dataset
+│   └── gradient_eval_dataset.csv  # Held-out Gradient evaluation dataset
 ├── prompt_versions/           # Saved prompt versions (auto-generated)
 ├── requirements.txt
 ├── .env.example
 └── README.md
 ```
-
-## Advanced: Using GEPA Optimizer
-
-[GEPA](https://dspy.ai/api/optimizers/GEPA/overview/) (Genetic-Pareto Algorithm) is a newer DSPy optimizer that uses reflective prompt evolution and outperforms MIPROv2 by ~10% on benchmarks. To use it, modify `optimize.py`:
-
-```python
-# Replace MIPROv2 with GEPA
-optimizer = dspy.GEPA(
-    metric=support_metric,
-    max_steps=50,
-)
-optimized = optimizer.compile(
-    student,
-    trainset=trainset,
-)
-```
-
-GEPA is best suited for complex multi-step tasks. For straightforward classification + response tasks, MIPROv2 is typically sufficient.
 
 ## Environment Variables
 

@@ -18,12 +18,12 @@ from langchain_gradient import ChatGradient
 from langgraph.graph import END, START, StateGraph
 
 import prompt_manager
-from prompts import CATEGORY_DEFINITIONS, RESPONSE_GUIDELINES, build_prompt
+from prompts import CATEGORY_LABELS, build_prompt
 
 load_dotenv()
 
 VALID_CATEGORIES = {"billing", "technical", "account", "general"}
-DEFAULT_MODEL = "openai-gpt-4.1"
+DEFAULT_MODEL = "llama3-8b-instruct"
 
 
 # =============================================================================
@@ -51,8 +51,7 @@ def classify_and_respond(state: SupportState) -> dict:
 
     prompt = build_prompt(
         system_instruction=version["system_instruction"],
-        category_definitions=CATEGORY_DEFINITIONS,
-        response_guidelines=RESPONSE_GUIDELINES,
+        category_labels=CATEGORY_LABELS,
         few_shot_examples=version.get("few_shot_examples", ""),
     )
 
@@ -69,9 +68,12 @@ def classify_and_respond(state: SupportState) -> dict:
         if parsed in VALID_CATEGORIES:
             category = parsed
 
-    # Extract the response text (everything after the Category line)
+    # Extract the response text — strip the Category and optional Response prefix
     response_text = re.sub(
         r"^Category:\s*\w+\s*\n?", "", content, count=1, flags=re.IGNORECASE
+    ).strip()
+    response_text = re.sub(
+        r"^Response:\s*", "", response_text, count=1, flags=re.IGNORECASE
     ).strip()
 
     return {
