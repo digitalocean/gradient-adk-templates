@@ -18,12 +18,11 @@ from langchain_gradient import ChatGradient
 from langgraph.graph import END, START, StateGraph
 
 import prompt_manager
-from prompts import CATEGORY_LABELS, build_prompt
+from prompts import CATEGORY_LABELS, TASK_MODEL, build_prompt
 
 load_dotenv()
 
 VALID_CATEGORIES = {"billing", "technical", "account", "general"}
-DEFAULT_MODEL = "llama3-8b-instruct"
 
 
 # =============================================================================
@@ -55,7 +54,7 @@ def classify_and_respond(state: SupportState) -> dict:
         few_shot_examples=version.get("few_shot_examples", ""),
     )
 
-    llm = ChatGradient(model=DEFAULT_MODEL, temperature=0.2)
+    llm = ChatGradient(model=TASK_MODEL, temperature=0.2)
     chain = prompt | llm
     result = chain.invoke({"email_text": state["email_text"]})
     content = result.content

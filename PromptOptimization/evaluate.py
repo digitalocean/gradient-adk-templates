@@ -22,18 +22,11 @@ from dotenv import load_dotenv
 from langchain_gradient import ChatGradient
 
 import prompt_manager
-from prompts import CATEGORY_LABELS, build_prompt
+from prompts import CATEGORY_LABELS, JUDGE_MODEL, TASK_MODEL, build_prompt
 
 load_dotenv()
 
 DATA_DIR = Path(__file__).parent / "data"
-
-# The agent model must match what main.py uses at inference — a smaller,
-# cheaper model whose baseline performance DSPy optimization improves.
-AGENT_MODEL = "llama3-8b-instruct"
-# The judge model must be stronger than the agent to reliably score
-# response quality. It is only used during evaluation, not at inference.
-JUDGE_MODEL = "openai-gpt-4.1"
 
 JUDGE_PROMPT = """You are evaluating a customer support agent's response. Score it using the rubric below.
 
@@ -73,7 +66,7 @@ def run_agent_on_email(email_text: str, version: dict) -> tuple[str, str]:
         few_shot_examples=version.get("few_shot_examples", ""),
     )
 
-    llm = ChatGradient(model=AGENT_MODEL, temperature=0.0)
+    llm = ChatGradient(model=TASK_MODEL, temperature=0.0)
     chain = prompt | llm
     result = chain.invoke({"email_text": email_text})
     content = result.content

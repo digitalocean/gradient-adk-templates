@@ -13,6 +13,19 @@ Customization:
 from langchain_core.prompts import ChatPromptTemplate
 
 # =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+
+# The model the agent uses at inference. A smaller, cheaper model whose
+# baseline performance DSPy optimization improves.
+TASK_MODEL = "openai-gpt-oss-20b"
+
+# A stronger model used as the MIPROv2 proposer (generates candidate
+# instructions) and the LLM-as-judge during evaluation. Only used during
+# optimization and evaluation, not at inference.
+JUDGE_MODEL = "openai-gpt-oss-120b"
+
+# =============================================================================
 # CONFIGURABLE PROMPT COMPONENTS
 # =============================================================================
 

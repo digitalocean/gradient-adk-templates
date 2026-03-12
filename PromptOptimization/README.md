@@ -79,15 +79,31 @@ You are a customer support agent for a cloud platform. Given a customer email,
 classify it into one of the categories and write a professional, empathetic
 response with actionable next steps.
 
-Carefully analyze the customer's email to determine the primary concern.
-Use the following guidelines for classification:
-- billing: payment issues, charges, invoices, refunds, subscription changes
-- technical: infrastructure problems, API errors, deployment failures, performance
-- account: login issues, permissions, team management, account settings
-- general: documentation questions, feature requests, feedback, onboarding
+**Task Overview**
+You are acting as an expert customer‑support agent for a cloud‑platform
+service. For each incoming support email you must:
 
-Write a response that acknowledges the customer's specific situation, shows
-empathy, and provides concrete next steps they can take to resolve their issue.
+1. **Classify** – assign the email to exactly one of the four predefined
+   categories: billing, technical, account, or general.
+2. **Reply** – write a professional, courteous, and empathetic response that
+   (a) acknowledges the user's concern, (b) summarizes the next actionable
+   steps you recommend, and (c) invites the user to follow up if needed.
+
+**Classification Details**
+- billing – invoices, charges, refunds, credits, payment methods, or
+  usage‑cost discrepancies.
+- technical – connectivity, performance, errors, logs, deployments, or any
+  functional issue with the platform's services.
+- account – ownership, permissions, role changes, account settings, password
+  resets, or profile information.
+- general – informational queries, feature requests, feedback, or anything
+  that does not fit the three categories above.
+
+**Style & Tone Guidelines**
+- Empathy – begin by acknowledging the user's problem.
+- Clarity – use plain language, avoid jargon unless necessary.
+- Actionability – each step must be concrete.
+- Professionalism – maintain a courteous, helpful demeanor.
 
 [Category Labels]  (fixed)
 Categories: billing, technical, account, general
@@ -100,20 +116,21 @@ Response: <response>
 [Few-Shot Examples]
 Examples:
 
-Email: My payment failed and now I can't access any of my droplets. I have
-production workloads running and this is urgent.
-Category: billing
-Response: I completely understand the urgency of your situation, and I'm sorry
-you're experiencing this disruption. Since your payment failure is affecting
-access to your production droplets, let me help you resolve this quickly:
-1. Navigate to Settings > Billing and update your payment method
-2. Once updated, click "Retry Payment" on the outstanding invoice
-3. Access should be restored within 5-10 minutes of successful payment
-If your workloads need immediate attention, our billing team can expedite
-this — reply here and I'll escalate right away.
+Email: I'm getting timeout errors when trying to SSH into my droplet. It was
+working fine until this morning.
+Category: technical
+Response: Hi there, I'm sorry you're having trouble SSH‑ing into your
+droplet—let's get that sorted out quickly. Here's what we can check right now:
+1. Is the droplet up? Log into your control panel and confirm it is running.
+2. Is the SSH service running? From the console, run: sudo systemctl status sshd
+3. Firewall / security group rules — check that port 22 is still allowed.
+4. IP address changes — verify the IP shown in the panel matches what you're
+   connecting to.
+If these checks don't resolve the issue, let me know and I can open a support
+ticket. Best regards, Cloud Support Team
 ```
 
-DSPy discovers that adding category definitions, tone guidance, and real examples from the training data improves both classification accuracy and response quality — even though the underlying LLM (Llama 3 8B) is the same.
+In a representative run, optimization improved classification accuracy from 67% to 88% (+21pp) while maintaining high response quality (4.8 → 4.9/5). DSPy discovers that adding detailed classification definitions, tone guidance, and real examples from the training data drives most of the gain — even though the underlying LLM is the same. Due to the stochastic nature of both the models and the optimization process, your exact scores may vary between runs.
 
 ## How It Works
 
@@ -165,7 +182,7 @@ The template measures prompt quality at two levels:
 
 **During evaluation** — The local evaluation harness (`evaluate.py`) runs the agent on a held-out validation set and measures:
 - **Classification accuracy** — exact match on predicted vs expected category, with per-category breakdown
-- **Response quality** — an LLM-as-judge (GPT-4.1) scores each response on a 1-5 rubric anchored to clear level descriptions (Excellent / Good / Acceptable / Poor / Unacceptable), checking whether it addresses the customer's issue, uses an appropriate tone, and provides actionable next steps
+- **Response quality** — an LLM-as-judge (`gpt-oss-120b`) scores each response on a 1-5 rubric anchored to clear level descriptions (Excellent / Good / Acceptable / Poor / Unacceptable), checking whether it addresses the customer's issue, uses an appropriate tone, and provides actionable next steps
 
 These scores are saved to the prompt version file, so you can track quality across optimization runs and make informed decisions about which version to deploy.
 
@@ -206,6 +223,89 @@ Active prompt: v1_baseline
 [6] Deploy agent to Gradient
 [7] Evaluate deployed agent (Gradient)
 ```
+
+### Prompt Versioning
+
+Every optimization run automatically becomes a version you can switch to, evaluate, compare, or rollback from. Versions are JSON files stored in `prompt_versions/` — one is marked **active** and used by the agent at runtime.
+
+**How it works:**
+- Running optimization (option `[1]`) saves a new version with a name you choose (or an auto-generated timestamped default)
+- Each version stores the system instruction, few-shot examples, optimizer metadata, evaluation scores, and a creation timestamp
+- The **active** version is what `main.py` loads when the agent handles a request — changing it instantly changes the agent's behaviour
+- Evaluation scores are attached to each version, so you can track quality across runs
+
+**Interactive versioning (via `python interactive.py`):**
+
+```
+# List and compare versions (option 3)
+Available versions:
+  v1_baseline [ACTIVE] | manual | acc=<xx>%, quality=<x.x>/5 | <timestamp>
+  <your-version> | dspy_miprov2_medium | acc=<xx>%, quality=<x.x>/5 | <timestamp>
+
+# Switch active version (option 4)
+Version to activate: <your-version>
+Active prompt set to: <your-version>
+
+# Rollback (option 5) — same as switching, with confirmation
+Current active: <your-version>
+Version to rollback to: v1_baseline
+Rolled back to: v1_baseline
+```
+
+**Scriptable versioning (via `prompt_manager.py`):**
+
+You can also manage versions programmatically or from a script:
+
+```python
+import prompt_manager
+
+# List all versions with scores
+for v in prompt_manager.list_versions():
+    print(prompt_manager.format_version_summary(v))
+
+# Switch the active version
+prompt_manager.set_active("<your-version>")
+
+# Rollback to baseline
+prompt_manager.set_active("v1_baseline")
+
+# Load and inspect a specific version
+version = prompt_manager.load_version("<your-version>")
+print(version["system_instruction"])
+print(version["scores"])
+
+# Compare two versions
+from evaluate import compare_versions
+compare_versions("v1_baseline", "<your-version>")
+```
+
+A convenience script `version_manager.py` is also included for common operations from the command line:
+
+```bash
+# List all versions
+python version_manager.py list
+
+# Show details of a specific version
+python version_manager.py show <your-version>
+
+# Switch active version
+python version_manager.py activate <your-version>
+
+# Compare two versions side-by-side
+python version_manager.py compare v1_baseline <your-version>
+
+# Rollback to a previous version
+python version_manager.py rollback v1_baseline
+```
+
+**Typical versioning workflow:**
+1. Start with `v1_baseline` (auto-created on first run)
+2. Run optimization → creates `v_dspy_light_...` with training accuracy
+3. Evaluate locally → scores get attached to the version
+4. Compare baseline vs optimized → decide which is better
+5. Activate the winner → agent uses it at runtime
+6. Deploy → push the active version to production
+7. If something goes wrong → rollback to the previous version
 
 ## Recommended Workflow
 
@@ -260,6 +360,7 @@ PromptOptimization/
 ├── interactive.py             # Interactive CLI workflow (menu-driven)
 ├── evaluate.py                # Local evaluation harness
 ├── prompt_manager.py          # Prompt version tracking
+├── version_manager.py         # CLI for version management (list/show/activate/rollback/compare)
 ├── data/
 │   ├── train.csv              # Training examples (48 labeled)
 │   ├── val.csv                # Validation examples (24 labeled)

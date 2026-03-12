@@ -35,7 +35,7 @@ logging.getLogger("litellm").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 import prompt_manager
-from prompts import BASELINE_SYSTEM_INSTRUCTION
+from prompts import BASELINE_SYSTEM_INSTRUCTION, JUDGE_MODEL, TASK_MODEL
 
 load_dotenv()
 
@@ -44,16 +44,6 @@ DATA_DIR = Path(__file__).parent / "data"
 # DO Serverless inference endpoint
 DO_INFERENCE_ENDPOINT = "https://inference.do-ai.run/v1/"
 DO_INFERENCE_KEY = os.environ.get("DIGITALOCEAN_INFERENCE_KEY", "")
-
-# Model the agent actually uses at inference (the task model).
-# This is intentionally a smaller, cheaper model — DSPy optimization
-# compensates for its weaker baseline by learning better instructions
-# and few-shot examples.
-TASK_MODEL = "llama3-8b-instruct"
-# MIPROv2's proposer model (generates candidate instructions). A stronger
-# model here produces better instruction candidates without affecting
-# the agent's per-request inference cost.
-OPTIMIZER_MODEL = "openai-gpt-4.1"
 
 # Fixed role preamble prepended to every optimized instruction to guard
 # against hallucinated/scenario-specific instructions from DSPy's proposer.
@@ -135,13 +125,16 @@ def load_dspy_examples(csv_path: Path) -> list:
 def configure_dspy():
     """Configure DSPy to use DO Serverless inference.
 
-    Sets the task model (Llama 3 8B) as the default LM. Returns both
-    the task LM and the proposer LM (GPT-4.1) for use in MIPROv2.
+    Sets the task model as the default LM. Returns both
+    the task LM and the proposer LM for use in MIPROv2.
     Caching is disabled so every optimization run makes fresh LLM calls.
     """
     if not DO_INFERENCE_KEY:
         raise RuntimeError("DIGITALOCEAN_INFERENCE_KEY not set. Check your .env file.")
 
+    # DSPy routes through LiteLLM, which needs an "openai/" prefix to use
+    # the OpenAI-compatible chat completions protocol. This is not calling
+    # OpenAI — the api_base points to DO Serverless Inference.
     task_lm = dspy.LM(
         f"openai/{TASK_MODEL}",
         api_base=DO_INFERENCE_ENDPOINT,
@@ -149,7 +142,7 @@ def configure_dspy():
         cache=False,
     )
     proposer_lm = dspy.LM(
-        f"openai/{OPTIMIZER_MODEL}",
+        f"openai/{JUDGE_MODEL}",
         api_base=DO_INFERENCE_ENDPOINT,
         api_key=DO_INFERENCE_KEY,
         cache=False,
@@ -177,7 +170,7 @@ def run_optimization(intensity: str = "light") -> dict:
     trainset = load_dspy_examples(DATA_DIR / "train.csv")
     print(f"Training examples: {len(trainset)}")
     print(f"Task model: {TASK_MODEL}")
-    print(f"Proposer model: {OPTIMIZER_MODEL}")
+    print(f"Proposer model: {JUDGE_MODEL}")
 
     print(f"\nRunning MIPROv2 with auto='{intensity}'...")
     print("This will make multiple LLM calls via DO Serverless.")
