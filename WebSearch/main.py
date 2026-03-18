@@ -1,9 +1,10 @@
 import os
 from gradient_adk import entrypoint
 from langchain_core.tools import tool
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_gradient import ChatGradient
 from langchain_core.messages import HumanMessage
-from langchain.agents import create_agent
+from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
 
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -25,9 +26,12 @@ llm = ChatGradient(
     model="openai-gpt-oss-120b",
 )
 
-agent = create_agent(
-    llm, tools=[web_search], system_prompt=SYSTEM_PROMPT
-)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_PROMPT),
+    ("placeholder", "{messages}"),
+])
+
+agent = create_react_agent(model=llm, tools=[web_search], prompt=prompt)
 
 
 class Message(BaseModel):
