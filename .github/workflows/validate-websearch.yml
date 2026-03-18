@@ -1,0 +1,13 @@
+on:
+  pull_request:
+    paths: ['WebSearch/**']
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-adk-agent
+        with:
+          working-directory: WebSearch
+          digitalocean-inference-key: ${{ secrets.DIGITALOCEAN_INFERENCE_KEY }}
