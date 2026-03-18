@@ -20,8 +20,10 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
     - run: pip install gradient-adk
+      shell: bash
     - run: pip install -r requirements.txt
       working-directory: ${{ inputs.working-directory }}
+      shell: bash
     - run: |
         gradient agent run &
         for i in $(seq 1 30); do
@@ -31,6 +33,7 @@ runs:
         echo "Agent failed to start within 60 seconds"
         exit 1
       working-directory: ${{ inputs.working-directory }}
+      shell: bash
       env:
         DIGITALOCEAN_INFERENCE_KEY: ${{ inputs.digitalocean-inference-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
