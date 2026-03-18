@@ -1,0 +1,36 @@
+name: 'Run ADK Agent'
+description: 'Run gradient agent run to validate agent starts and is available at http://localhost:8080'
+inputs:
+  working-directory:
+    required: true
+    description: 'Path to agent directory (e.g., WebSearch, StateGraph)'
+  digitalocean-inference-key:
+    required: true
+    description: 'DigitalOcean inference key (for LLM)'
+  python-version:
+    required: false
+    default: '3.10'
+  openai-api-key:
+    required: false
+    description: 'OpenAI API key (for RAG embeddings; not needed for WebSearch)'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - run: pip install gradient-adk
+    - run: pip install -r requirements.txt
+      working-directory: ${{ inputs.working-directory }}
+    - run: |
+        gradient agent run &
+        for i in $(seq 1 30); do
+          curl -s -o /dev/null --connect-timeout 2 http://127.0.0.1:8080/ && { echo "Port 8080 is listening"; exit 0; }
+          sleep 2
+        done
+        echo "Agent failed to start within 60 seconds"
+        exit 1
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DIGITALOCEAN_INFERENCE_KEY: ${{ inputs.digitalocean-inference-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
