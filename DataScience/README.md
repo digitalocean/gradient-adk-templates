@@ -492,4 +492,4 @@ Additional safeguards:
 
 - [DigitalOcean Managed Databases](https://docs.digitalocean.com/products/databases/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

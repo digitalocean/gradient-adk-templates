@@ -2,7 +2,7 @@
 
 A comprehensive research agent that conducts multi-step web research and produces detailed reports with citations. Features human-in-the-loop plan approval and parallel section research using LangGraph's advanced features.
 
-Based on [Google ADK's DeepSearch agent](https://github.com/google/adk-samples/tree/main/python/agents/deep-search), adapted for the DigitalOcean Gradient AI Platform with Serper for web search.
+Based on [Google ADK's DeepSearch agent](https://github.com/google/adk-samples/tree/main/python/agents/deep-search), adapted for the DigitalOcean AI Platform with Serper for web search.
 
 ## Use Case
 
@@ -511,4 +511,4 @@ memory = PostgresSaver.from_conn_string(os.environ["DATABASE_URL"])
 - [LangGraph Send API](https://langchain-ai.github.io/langgraph/how-tos/map-reduce/)
 - [Serper API Documentation](https://serper.dev/docs)
 - [Google ADK DeepSearch](https://github.com/google/adk-samples/tree/main/python/agents/deep-search)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

@@ -364,4 +364,4 @@ mcp_client = MultiServerMCPClient({
 - [MCP Servers Directory](https://github.com/modelcontextprotocol/servers)
 - [LangChain MCP Adapters](https://github.com/langchain-ai/langchain-mcp-adapters)
 - [Tavily MCP Documentation](https://docs.tavily.com/documentation/mcp)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

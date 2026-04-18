@@ -155,7 +155,7 @@ Using dbt as the intermediary (rather than executing DDL directly) provides:
 
 - Python 3.9+
 - A Snowflake account (free trial: https://signup.snowflake.com/)
-- DigitalOcean account with Gradient AI access
+- DigitalOcean account with AI Platform access
 
 ### 2. Install Dependencies
 
@@ -179,7 +179,7 @@ cp .env.example .env
 Edit `.env` with your values:
 
 ```bash
-# DigitalOcean Gradient AI
+# DigitalOcean AI Platform
 DIGITALOCEAN_INFERENCE_KEY=your_key_here
 
 # Snowflake Connection
@@ -513,7 +513,7 @@ dbt_project/
 
 ## Deployment
 
-### Deploy to DigitalOcean Gradient AI
+### Deploy to DigitalOcean AI Platform
 
 1. Update the agent name in `.gradient/agent.yml` if desired:
 
@@ -624,7 +624,7 @@ DataEngineering/
 │   ├── tests/
 │   └── dbt_project.yml
 ├── .gradient/
-│   └── agent.yml           # Gradient AI configuration
+│   └── agent.yml           # ADK deployment configuration
 ├── .env.example            # Environment template
 ├── requirements.txt        # Python dependencies
 └── README.md
@@ -668,5 +668,5 @@ cd dbt_project && dbt debug
 
 - [dbt Documentation](https://docs.getdbt.com/)
 - [Snowflake Documentation](https://docs.snowflake.com/)
-- [DigitalOcean Gradient AI](https://www.digitalocean.com/products/gradient)
+- [DigitalOcean AI Platform](https://www.digitalocean.com/products/gradient)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
