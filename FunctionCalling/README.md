@@ -15,7 +15,7 @@ FunctionCalling/
 │       └── packages/converter/convert/__main__.py
 │
 └── Agent/                       # Agent code (this is what gets deployed)
-    ├── .gradient/agent.yml      #   Gradient ADK deployment config
+    ├── .gradient/agent.yml      #   ADK deployment config
     ├── main.py                  #   Entry point — builds tool from config, runs agent
     ├── function_config.py       #   ★ Edit this to connect to YOUR function
     ├── prompts.py               #   System prompt (edit to customize behavior)
@@ -98,4 +98,4 @@ doctl serverless undeploy converter/convert
 - [DigitalOcean Functions Docs](https://docs.digitalocean.com/products/functions/)
 - [doctl Serverless Reference](https://docs.digitalocean.com/reference/doctl/reference/serverless/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

@@ -1,6 +1,6 @@
 # Prompt Optimization Template
 
-Automatically optimize your agent's system prompt using DSPy, evaluate with both custom metrics and Gradient's built-in evaluators, and deploy the best version to production.
+Automatically optimize your agent's system prompt using DSPy, evaluate with both custom metrics and DigitalOcean's built-in evaluators, and deploy the best version to production.
 
 **Use Case:** A customer support email classifier and responder that categorizes emails (billing, technical, account, general) and generates helpful responses. The prompt optimization workflow improves both classification accuracy and response quality.
 
@@ -10,8 +10,8 @@ Automatically optimize your agent's system prompt using DSPy, evaluate with both
 | Agent orchestration | LangGraph StateGraph |
 | Prompt structure | LangChain ChatPromptTemplate |
 | LLM inference | DigitalOcean Serverless |
-| Evaluation | Local DSPy metrics + Gradient platform evaluation |
-| Deployment | Gradient ADK |
+| Evaluation | Local DSPy metrics + DigitalOcean platform evaluation |
+| Deployment | DigitalOcean ADK |
 
 ## Quick Start
 
@@ -186,18 +186,18 @@ The template measures prompt quality at two levels:
 
 These scores are saved to the prompt version file, so you can track quality across optimization runs and make informed decisions about which version to deploy.
 
-### Two-Tier Evaluation: Local vs Gradient
+### Two-Tier Evaluation: Local vs Platform
 
 This template provides two complementary evaluation approaches for different stages of the workflow:
 
 **Local DSPy Evaluation (option 2)** runs during development, before deployment. It uses `data/val.csv` — a validation set of 24 labeled examples with expected categories and response traits. The evaluation calls the LLM directly (via DO Serverless) and computes custom metrics: exact-match accuracy and LLM-as-judge quality scores. This is fast, repeatable, and useful for comparing prompt versions head-to-head during iteration.
 
-**Gradient Evaluation (option 7)** runs after deployment against the live agent endpoint. It uses a separate held-out dataset (`data/gradient_eval_dataset.csv`) with examples that were **not** used during optimization or local evaluation. Gradient's built-in evaluator provides platform-grade metrics across multiple categories:
+**Platform Evaluation (option 7)** runs after deployment against the live agent endpoint. It uses a separate held-out dataset (`data/gradient_eval_dataset.csv`) with examples that were **not** used during optimization or local evaluation. DigitalOcean's built-in evaluator provides platform-grade metrics across multiple categories:
 - **Correctness** — general hallucinations, instruction following
 - **User outcomes** — goal progress and completion
 - **Safety & security** — PII leak detection, toxicity, prompt injection
 
-The key difference: local evaluation tells you whether the optimized prompt is better than the baseline on *your* metrics. Gradient evaluation tells you whether the deployed agent meets production quality standards on a broader set of concerns (hallucinations, safety, user outcomes) using examples the agent has never seen. Use both — local evaluation for fast iteration, Gradient evaluation for deployment validation.
+The key difference: local evaluation tells you whether the optimized prompt is better than the baseline on *your* metrics. Platform evaluation tells you whether the deployed agent meets production quality standards on a broader set of concerns (hallucinations, safety, user outcomes) using examples the agent has never seen. Use both — local evaluation for fast iteration, platform evaluation for deployment validation.
 
 ### Interactive Workflow (`interactive.py`)
 
@@ -220,8 +220,8 @@ Active prompt: v1_baseline
 [5] Rollback to previous version
 
 --- Deploy ---
-[6] Deploy agent to Gradient
-[7] Evaluate deployed agent (Gradient)
+[6] Deploy agent
+[7] Evaluate deployed agent (platform)
 ```
 
 ### Prompt Versioning
@@ -314,8 +314,8 @@ python version_manager.py rollback v1_baseline
 3. **Evaluate locally** — Option `[2]` to see accuracy and quality scores
 4. **Compare** — Option `[3]` to compare baseline vs optimized side-by-side
 5. **Activate** — Option `[4]` to set the best version as active
-6. **Deploy** — Option `[6]` to deploy to Gradient
-7. **Validate** — Option `[7]` to run Gradient evaluation on the deployed agent
+6. **Deploy** — Option `[6]` to deploy to DigitalOcean
+7. **Validate** — Option `[7]` to run platform evaluation on the deployed agent
 
 ## Customizing for Your Use Case
 
@@ -338,7 +338,7 @@ email_text,category,good_response_traits
 "Your customer message here",your_category,"Expected response characteristics"
 ```
 
-Aim for 30-50+ training examples and 15-20 validation examples. Include ambiguous cross-category emails (e.g., "My payment failed and now I can't access my services") — these are the cases where prompt optimization makes the biggest difference, since the baseline instruction has no disambiguation rules. Also update `data/gradient_eval_dataset.csv` with held-out examples in the Gradient query format (see the existing file for the schema).
+Aim for 30-50+ training examples and 15-20 validation examples. Include ambiguous cross-category emails (e.g., "My payment failed and now I can't access my services") — these are the cases where prompt optimization makes the biggest difference, since the baseline instruction has no disambiguation rules. Also update `data/gradient_eval_dataset.csv` with held-out examples in the platform query format (see the existing file for the schema).
 
 ### Change the evaluation metric
 
@@ -346,14 +346,14 @@ Edit `support_metric()` in `optimize.py` to weight what matters for your use cas
 
 ### Swap the LLM model
 
-Change `DEFAULT_MODEL` in `main.py` and `TASK_MODEL`/`OPTIMIZER_MODEL` in `optimize.py`. See the [full list of available models](https://docs.digitalocean.com/products/gradient-ai-platform/details/models/) on the Gradient AI platform.
+Change `DEFAULT_MODEL` in `main.py` and `TASK_MODEL`/`OPTIMIZER_MODEL` in `optimize.py`. See the [full list of available models](https://docs.digitalocean.com/products/gradient-ai-platform/details/models/) on the DigitalOcean AI Platform.
 
 ## Project Structure
 
 ```
 PromptOptimization/
 ├── .gradient/
-│   └── agent.yml              # Gradient deployment config
+│   └── agent.yml              # ADK deployment config
 ├── main.py                    # Agent entrypoint (LangGraph + ChatPromptTemplate)
 ├── prompts.py                 # Prompt template components
 ├── optimize.py                # DSPy MIPROv2 optimization engine
@@ -365,7 +365,7 @@ PromptOptimization/
 │   ├── train.csv              # Training examples (48 labeled)
 │   ├── val.csv                # Validation examples (24 labeled)
 │   ├── eval_dataset.csv       # Local evaluation dataset
-│   └── gradient_eval_dataset.csv  # Held-out Gradient evaluation dataset
+│   └── gradient_eval_dataset.csv  # Held-out platform evaluation dataset
 ├── prompt_versions/           # Saved prompt versions (auto-generated)
 ├── requirements.txt
 ├── .env.example
@@ -376,13 +376,13 @@ PromptOptimization/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DIGITALOCEAN_API_TOKEN` | DigitalOcean API token | For deployment & Gradient eval |
+| `DIGITALOCEAN_API_TOKEN` | DigitalOcean API token | For deployment & platform eval |
 | `DIGITALOCEAN_INFERENCE_KEY` | GenAI Serverless Inference key | For all LLM calls |
 
 ## Resources
 
 - [DSPy Documentation](https://dspy.ai/)
 - [DSPy MIPROv2 API](https://dspy.ai/api/optimizers/MIPROv2/)
-- [Gradient ADK Guide](https://docs.digitalocean.com/products/gradient-ai-platform/how-to/build-agents-using-adk/)
-- [Gradient Evaluation Metrics](https://docs.digitalocean.com/products/gradient-ai-platform/reference/agent-evaluation-metrics/)
+- [ADK Guide](https://docs.digitalocean.com/products/gradient-ai-platform/how-to/build-agents-using-adk/)
+- [Evaluation Metrics](https://docs.digitalocean.com/products/gradient-ai-platform/reference/agent-evaluation-metrics/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)

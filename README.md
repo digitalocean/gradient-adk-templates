@@ -1,10 +1,10 @@
-# Gradient ADK Templates
+# DigitalOcean ADK Templates
 
-Production-ready templates for building and deploying AI agents on the DigitalOcean Gradient AI Platform using the Agent Development Kit (ADK).
+Production-ready templates for building and deploying AI agents on the DigitalOcean AI Platform using the Agent Development Kit (ADK).
 
-## What is Gradient ADK?
+## What is the ADK?
 
-The Gradient Agent Development Kit (ADK) is DigitalOcean's framework for building, testing, and deploying AI agents. It provides:
+The DigitalOcean Agent Development Kit (ADK) is DigitalOcean's framework for building, testing, and deploying AI agents. It provides:
 
 - **Simple deployment**: Deploy agents with a single command using `gradient agent deploy`
 - **Framework flexibility**: Build agents with LangGraph, CrewAI, or any Python framework
@@ -28,7 +28,7 @@ Each template demonstrates a specific agent architecture or capability. Choose b
 | [DataScience](./DataScience/) | Natural language to SQL | Database queries, self-healing, visualization | Advanced |
 | [DeepSearch](./DeepSearch/) | Multi-step research | Human-in-the-loop, parallel execution | Advanced |
 | [DataEngineering](./DataEngineering/) | Snowflake + dbt pipelines | Pipeline development, data quality, dbt | Advanced |
-| [PromptOptimization](./PromptOptimization/) | Automated prompt tuning | DSPy MIPROv2, Gradient evaluations, version management | Advanced |
+| [PromptOptimization](./PromptOptimization/) | Automated prompt tuning | DSPy MIPROv2, DigitalOcean evaluations, version management | Advanced |
 
 ## Quick Start
 
@@ -36,12 +36,12 @@ Each template demonstrates a specific agent architecture or capability. Choose b
 
 - Python 3.10+
 - DigitalOcean account with API access
-- [Gradient CLI](https://docs.digitalocean.com/products/gradient/) installed
+- [ADK CLI](https://docs.digitalocean.com/products/gradient/) installed
 
 ### Installation
 
 ```bash
-# Install the Gradient CLI
+# Install the ADK CLI
 pip install gradient-adk
 
 # Clone this repository
@@ -78,7 +78,7 @@ gradient agent deploy
 
 ### Beginner Templates
 
-**[StateGraph](./StateGraph/)** - A joke generator that demonstrates LangGraph fundamentals: state management, conditional routing, and multi-step LLM chains. Start here to understand how Gradient ADK agents work.
+**[StateGraph](./StateGraph/)** - A joke generator that demonstrates LangGraph fundamentals: state management, conditional routing, and multi-step LLM chains. Start here to understand how ADK agents work.
 
 **[WebSearch](./WebSearch/)** - A minimal agent that uses DuckDuckGo for web search. Shows how to bind tools to LLMs using LangChain's `create_agent` helper function.
 
@@ -104,7 +104,7 @@ gradient agent deploy
 
 **[DataEngineering](./DataEngineering/)** - A data engineering assistant that helps build and manage Snowflake data pipelines using dbt. Can create transformation models, run data quality checks, troubleshoot pipeline failures, and explore your data warehouse. Includes a full sample e-commerce dataset with realistic data quality issues and a complete dbt project with staging, intermediate, and mart layers.
 
-**[PromptOptimization](./PromptOptimization/)** - An automated prompt optimization workflow using DSPy MIPROv2 to improve a customer support agent's system prompt. Features two-tier evaluation (DSPy custom metrics + Gradient platform evaluations), prompt version tracking with rollback, and a guided CLI for the full optimize-evaluate-deploy cycle.
+**[PromptOptimization](./PromptOptimization/)** - An automated prompt optimization workflow using DSPy MIPROv2 to improve a customer support agent's system prompt. Features two-tier evaluation (DSPy custom metrics + DigitalOcean platform evaluations), prompt version tracking with rollback, and a guided CLI for the full optimize-evaluate-deploy cycle.
 
 ## Common Patterns
 
@@ -154,9 +154,9 @@ Common environment variables across templates:
 
 ## Resources
 
-- [Gradient AI Documentation](https://docs.digitalocean.com/products/gradient/)
+- [DigitalOcean AI Platform Documentation](https://docs.digitalocean.com/products/gradient/)
 - [Agent Development Kit Guide](https://docs.digitalocean.com/products/gradient/adk/)
-- [DigitalOcean GenAI Platform](https://www.digitalocean.com/products/gradient)
+- [DigitalOcean AI Platform](https://www.digitalocean.com/products/gradient)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [CrewAI Documentation](https://docs.crewai.com/)
 

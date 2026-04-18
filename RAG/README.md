@@ -1,6 +1,6 @@
 # RAG - Document Question Answering
 
-A multi-agent Retrieval-Augmented Generation (RAG) system for question answering over PDF documents. Built with LangGraph and LangChain, deployable on the DigitalOcean Gradient AI Platform.
+A multi-agent Retrieval-Augmented Generation (RAG) system for question answering over PDF documents. Built with LangGraph and LangChain, deployable on the DigitalOcean AI Platform.
 
 ## Use Case
 
@@ -396,4 +396,4 @@ loader = DirectoryLoader(
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [LangChain RAG Guide](https://python.langchain.com/docs/tutorials/rag/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

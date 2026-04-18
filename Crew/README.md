@@ -1,22 +1,22 @@
-# Crew - Using External Frameworks with Gradient ADK
+# Crew - Using External Frameworks with the ADK
 
-A multi-agent system built with CrewAI that researches news and generates trivia facts. This template demonstrates that you can deploy agents built with **any Python framework** on the DigitalOcean Gradient AI Platform - not just LangGraph.
+A multi-agent system built with CrewAI that researches news and generates trivia facts. This template demonstrates that you can deploy agents built with **any Python framework** on the DigitalOcean AI Platform - not just LangGraph.
 
 ## Use Case
 
-This template builds a trivia generator using CrewAI, but the key takeaway is **framework flexibility**. Whether you prefer CrewAI, AutoGen, or any other agent framework, the Gradient ADK lets you deploy it with the same simple workflow: wrap your logic in an `@entrypoint` function, and run `gradient agent deploy`.
+This template builds a trivia generator using CrewAI, but the key takeaway is **framework flexibility**. Whether you prefer CrewAI, AutoGen, or any other agent framework, the ADK lets you deploy it with the same simple workflow: wrap your logic in an `@entrypoint` function, and run `gradient agent deploy`.
 
 **Template Highlights:**
-- Deploy CrewAI agents (or any framework) on the Gradient AI Platform
+- Deploy CrewAI agents (or any framework) on the DigitalOcean AI Platform
 - Use DigitalOcean's serverless inference as the LLM backend
-- Combine framework-specific patterns with Gradient's deployment infrastructure
+- Combine framework-specific patterns with DigitalOcean's deployment infrastructure
 - Integrate external tools (Serper search) within your chosen framework
 
 ## Key Concepts
 
-**Framework flexibility** is a core principle of the Gradient ADK. While many templates use LangGraph, the ADK doesn't require it. Any Python code that accepts input and returns output can become a deployed agent.
+**Framework flexibility** is a core principle of the ADK. While many templates use LangGraph, the ADK doesn't require it. Any Python code that accepts input and returns output can become a deployed agent.
 
-This template uses CrewAI's role-based agent pattern: a Researcher agent gathers information, then passes context to a Trivia Generator agent. CrewAI manages the agent coordination, while the Gradient ADK handles deployment, scaling, and infrastructure.
+This template uses CrewAI's role-based agent pattern: a Researcher agent gathers information, then passes context to a Trivia Generator agent. CrewAI manages the agent coordination, while the ADK handles deployment, scaling, and infrastructure.
 
 ## Architecture
 
@@ -279,11 +279,11 @@ def crew(self) -> Crew:
 ## Notes
 
 - Response times are typically 30-40 seconds due to multiple LLM calls and web searches
-- Native trace viewing for CrewAI agents is not yet available on the Gradient AI Platform
+- Native trace viewing for CrewAI agents is not yet available on the DigitalOcean AI Platform
 - The Serper API has rate limits on the free tier
 
 ## Resources
 
 - [CrewAI Documentation](https://docs.crewai.com/)
 - [Serper API Documentation](https://serper.dev/docs)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

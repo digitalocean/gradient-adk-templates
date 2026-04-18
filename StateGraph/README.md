@@ -1,13 +1,13 @@
 # StateGraph - LangGraph Fundamentals
 
-A joke generator that demonstrates LangGraph basics: state management, conditional routing, and multi-step LLM chains. This is the recommended starting point for learning how to build agents with the Gradient Agent Development Kit (ADK).
+A joke generator that demonstrates LangGraph basics: state management, conditional routing, and multi-step LLM chains. This is the recommended starting point for learning how to build agents with the DigitalOcean Agent Development Kit (ADK).
 
 ## Use Case
 
 Learn the fundamentals of LangGraph by building a simple multi-step workflow. This template shows how to chain LLM calls, implement conditional branching, and add quality gates - patterns used in every LangGraph agent.
 
 **When to use this template:**
-- You're new to LangGraph or the Gradient ADK
+- You're new to LangGraph or the ADK
 - You want to understand state management and routing
 - You need a minimal example to build from
 
@@ -370,4 +370,4 @@ def punchline_check(state: JokeState) -> str:
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [LangGraph Tutorials](https://langchain-ai.github.io/langgraph/tutorials/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

@@ -1,323 +1,149 @@
-# KnowledgeBaseRAG - DigitalOcean Knowledge Base Integration
+# KnowledgeBaseRAG - ADK + KBaaS Demo
 
-An agent that queries your DigitalOcean-managed Knowledge Base using natural language. This template demonstrates how to integrate with DigitalOcean's Knowledge Base service for document retrieval without managing your own vector store.
+This template is a compact validation demo for showing that the DigitalOcean ADK and Knowledge Bases work well together.
 
-## Use Case
+It demonstrates:
+- an ADK entrypoint that can be run locally or deployed
+- a tool-backed retrieval call into a managed Knowledge Base
+- grounded answers with lightweight source labels
+- ADK tracing for both the agent flow and the retriever call
 
-Use DigitalOcean's managed Knowledge Base service to build a Q&A agent over your documents. Unlike the RAG template that manages its own embeddings, this approach uses DigitalOcean's infrastructure for document storage and retrieval.
+## What This Demo Proves
 
-**When to use this template:**
-- You want managed document storage and retrieval
-- You're already using DigitalOcean Knowledge Bases
-- You don't want to manage embedding infrastructure
+The demo is designed to answer a simple question for the ticket: can we build a clean ADK experience on top of KBaaS without standing up our own vector stack?
 
-## Key Concepts
-
-**DigitalOcean Knowledge Bases** provide managed document storage and retrieval without the complexity of running your own vector database. You upload documents or provide URLs, and DigitalOcean automatically handles chunking, embedding, and indexing. Your agent queries the Knowledge Base via API, receiving relevant passages to use as context for generating answers.
-
-This approach differs from the RAG template, which manages its own embeddings and vector store. With Knowledge Bases, you trade some customization flexibility for simpler infrastructure - no need to manage OpenAI API keys for embeddings or worry about vector store persistence.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│               KnowledgeBaseRAG Agent                    │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Input: { prompt }                                      │
-│           │                                             │
-│           ▼                                             │
-│  ┌────────────────────────────────────┐                 │
-│  │              LLM                   │◄────────────┐   │
-│  │                                    │             │   │
-│  │  Bound to query_digitalocean_kb    │             │   │
-│  │  tool                              │      tool   │   │
-│  │                                    │      results│   │
-│  │  The LLM decides:                  │             │   │
-│  │  1. Whether to query the KB        │             │   │
-│  │  2. When to respond to the user    │             │   │
-│  └──────────────┬─────────────────────┘             │   │
-│                 │                                   │   │
-│          (calls tool)                               │   │
-│                 │                                   │   │
-│                 ▼                                   │   │
-│  ┌────────────────────────────────────┐             │   │
-│  │   query_digitalocean_kb Tool       │             │   │
-│  │                                    │             │   │
-│  │  ┌──────────────────────────────┐  │             │   │
-│  │  │  DigitalOcean Knowledge Base │  │             │   │
-│  │  │                              │  │             │   │
-│  │  │  - Managed vector storage    │  │             │   │
-│  │  │  - Automatic embeddings      │  │             │   │
-│  │  │  - Semantic search           │  │             │   │
-│  │  └──────────────────────────────┘  │             │   │
-│  └──────────────┬─────────────────────┘             │   │
-│                 │                                   │   │
-│                 └───────────────────────────────────┘   │
-│                 (results return to same LLM)            │
-│                                                         │
-│                 │ (when done reasoning)                 │
-│                 ▼                                       │
-│  Output: Answer based on Knowledge Base                 │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
-The agent uses a **single LLM in a reasoning loop**. The LLM has the Knowledge Base query tool bound to it and decides when to retrieve context. Tool results are returned to the same LLM, which synthesizes the retrieved documents into a coherent answer.
+The answer path is:
+1. The user sends a prompt to the ADK app.
+2. The agent decides to call `query_digitalocean_kb`.
+3. The tool queries the configured Knowledge Base.
+4. Retrieved passages are returned in a citation-friendly format.
+5. The model answers using those passages and cites them as `[Source N]`.
 
 ## Prerequisites
 
 - Python 3.10+
-- DigitalOcean account
-- A DigitalOcean Knowledge Base with content
-
-### Getting API Keys
-
-1. **DigitalOcean API Token** (with `genai:*` and `project:read` scopes):
-   - Go to [API Settings](https://cloud.digitalocean.com/account/api/tokens)
-   - Generate a new token
-   - Ensure the token has GenAI and project read permissions
-
-2. **DigitalOcean Inference Key**:
-   - Go to [GenAI Settings](https://cloud.digitalocean.com/gen-ai)
-   - Create or copy your inference key
-
-3. **Knowledge Base ID**:
-   - Go to [Knowledge Bases](https://cloud.digitalocean.com/gen-ai/knowledge-bases)
-   - Create a Knowledge Base or select an existing one
-   - Copy the UUID from the URL: `https://cloud.digitalocean.com/gen-ai/knowledge-bases/<UUID>`
+- A DigitalOcean account
+- A DigitalOcean Knowledge Base with indexed content
+- A DigitalOcean API token with `genai:*` and `project:read`
+- A DigitalOcean inference key
 
 ## Setup
-
-### 1. Create a Knowledge Base
-
-If you don't have a Knowledge Base yet:
-
-1. Go to [DigitalOcean Knowledge Bases](https://cloud.digitalocean.com/gen-ai/knowledge-bases)
-2. Click "Create Knowledge Base"
-3. Add a data source
-4. Wait for indexing to complete
-5. Copy the Knowledge Base UUID from the URL
-
-### 2. Create Virtual Environment
 
 ```bash
 cd KnowledgeBaseRAG
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 4. Configure Environment
-
-```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
+Fill in `.env`:
 
-```
-DIGITALOCEAN_INFERENCE_KEY=your_inference_key
+```bash
+DIGITALOCEAN_API_TOKEN=your_digitalocean_api_token
+DIGITALOCEAN_INFERENCE_KEY=your_digitalocean_inference_key
 DIGITALOCEAN_KB_ID=your_knowledge_base_uuid
 ```
 
-## Running Locally
-
-### Start the Agent
+Optional knobs:
 
 ```bash
-export DIGITALOCEAN_API_TOKEN=your_token
+MODEL_NAME=openai-gpt-4.1
+DIGITALOCEAN_KB_TOP_K=4
+DIGITALOCEAN_KB_SNIPPET_CHARS=1200
+```
+
+## Run Locally
+
+```bash
 gradient agent run
 ```
 
-### Test with curl
+The demo now accepts either a plain prompt string or the nested `prompt.messages` shape.
+
+Plain prompt example:
 
 ```bash
 curl --location 'http://localhost:8080/run' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "prompt": {
-            "messages": "What is the Gradient AI Platform?"
-        }
-    }'
+  --header 'Content-Type: application/json' \
+  --data '{
+    "prompt": "What does this knowledge base say about model deployment limits?"
+  }'
 ```
+
+Nested prompt example:
+
+```bash
+curl --location 'http://localhost:8080/run' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "prompt": {
+      "messages": "Summarize the indexing workflow and cite your sources."
+    }
+  }'
+```
+
+## Suggested Demo Flow
+
+Use a Knowledge Base that contains product docs, onboarding docs, or policy docs. Then walk through a few prompts:
+
+- "What is the product, in one paragraph?"
+- "How does indexing work? Cite the sources you used."
+- "What are the main setup steps for a new user?"
+- "What information is missing from the docs for troubleshooting?"
+
+What to point out during the demo:
+
+- Answers stay grounded in KB retrieval instead of free-form model recall.
+- Source labels make the response feel auditable.
+- ADK traces let you show both the agent step and the retriever step.
+- No separate vector DB, embedding pipeline, or custom retrieval service is needed in the app code.
 
 ## Deployment
 
-### 1. Configure Agent Name
-
-Edit `.gradient/agent.yml`:
+Update the deployment name if you want:
 
 ```yaml
-agent_name: my-kb-agent
+agent_name: knowledgebase-rag-demo
 ```
 
-### 2. Deploy
+Then deploy:
 
 ```bash
 gradient agent deploy
 ```
 
-### 3. Invoke Deployed Agent
+Invoke the deployed agent:
 
 ```bash
 curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-    --header 'Content-Type: application/json' \
-    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
-    --data '{
-        "prompt": {
-            "messages": "What is the Gradient AI Platform?"
-        }
-    }'
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
+  --data '{
+    "prompt": "What does the knowledge base say about indexing?"
+  }'
 ```
 
-## Project Structure
+## Files
 
-```
+```text
 KnowledgeBaseRAG/
-├── .gradient/
-│   └── agent.yml          # Deployment configuration
-├── main.py                 # Agent with KB query tool
-├── prompts.py              # System prompt (edit this to customize!)
-├── requirements.txt        # Dependencies
-├── .env.example           # Environment template
+├── .env.example
+├── .gradient/agent.yml
+├── main.py
+├── prompts.py
+├── requirements.txt
 └── README.md
 ```
 
-## Code Walkthrough
+## Implementation Notes
 
-### Creating the KB Query Tool
-
-```python
-from langchain.tools import tool
-import requests
-
-@tool
-def query_digitalocean_kb(query: str) -> str:
-    """Query the DigitalOcean Knowledge Base."""
-    kb_id = os.environ.get("DIGITALOCEAN_KB_ID")
-    token = os.environ.get("DIGITALOCEAN_API_TOKEN")
-
-    response = requests.post(
-        f"https://api.digitalocean.com/v2/gen-ai/knowledge-bases/{kb_id}/query",
-        headers={"Authorization": f"Bearer {token}"},
-        json={"query": query}
-    )
-
-    return response.json()["results"]
-```
-
-### Creating the Agent
-
-```python
-from langchain_gradient import ChatGradient
-from langchain.agents import create_tool_calling_agent, AgentExecutor
-
-llm = ChatGradient(model="openai-gpt-4.1")
-agent = create_tool_calling_agent(llm, [query_digitalocean_kb], prompt)
-executor = AgentExecutor(agent=agent, tools=[query_digitalocean_kb])
-```
-
-## Customization
-
-### Customizing the Agent's Behavior
-
-The easiest way to adapt this template is by editing **`prompts.py`**. This file contains the system prompt that defines how the agent behaves when answering questions from your knowledge base.
-
-**Example: Product Documentation Assistant**
-
-```python
-# In prompts.py, change SYSTEM_PROMPT to:
-SYSTEM_PROMPT = """You are a helpful product documentation assistant.
-When answering questions:
-- Use information from the knowledge base to provide accurate answers
-- If information is not in the knowledge base, say so clearly
-- Provide step-by-step instructions when relevant
-- Include links to relevant documentation pages when available"""
-```
-
-**Example: Customer Support Agent**
-
-```python
-SYSTEM_PROMPT = """You are a customer support agent for [Your Company].
-When helping users:
-- Be friendly and professional
-- Search the knowledge base to find accurate solutions
-- If you can't find an answer, offer to escalate to human support
-- Provide clear, actionable steps to resolve issues"""
-```
-
-**Example: Technical Expert**
-
-```python
-SYSTEM_PROMPT = """You are a technical expert assistant with access to internal documentation.
-When answering questions:
-- Provide detailed technical explanations
-- Reference specific documentation sections
-- Include code examples when applicable
-- Warn about common pitfalls or edge cases"""
-```
-
-### Using Multiple Knowledge Bases
-
-Query different Knowledge Bases based on the topic:
-
-```python
-@tool
-def query_product_docs(query: str) -> str:
-    """Query the product documentation Knowledge Base."""
-    return query_kb(os.environ["PRODUCT_KB_ID"], query)
-
-@tool
-def query_support_docs(query: str) -> str:
-    """Query the support documentation Knowledge Base."""
-    return query_kb(os.environ["SUPPORT_KB_ID"], query)
-
-# Add both tools
-agent = create_tool_calling_agent(llm, [query_product_docs, query_support_docs], prompt)
-```
-
-### Adding Result Filtering
-
-Filter or process KB results before returning:
-
-```python
-@tool
-def query_digitalocean_kb(query: str, max_results: int = 5) -> str:
-    """Query the Knowledge Base with result limit."""
-    results = raw_query_kb(query)
-
-    # Filter to top results by relevance score
-    filtered = sorted(results, key=lambda x: x["score"], reverse=True)[:max_results]
-
-    return "\n\n".join([r["content"] for r in filtered])
-```
-
-### Combining with Web Search
-
-Use KB for internal docs, web search for external info:
-
-```python
-from langchain_community.tools import DuckDuckGoSearchRun
-
-@tool
-def query_digitalocean_kb(query: str) -> str:
-    """Query internal documentation."""
-    # ... KB query implementation
-
-search_tool = DuckDuckGoSearchRun()
-search_tool.description = "Search the web for external information."
-
-agent = create_tool_calling_agent(llm, [query_digitalocean_kb, search_tool], prompt)
-```
+- `main.py` now accepts both common request payload shapes, so the README examples match runtime behavior.
+- Retrieval results are formatted into `[Source N]` blocks with metadata when available.
+- The actual Knowledge Base call is wrapped with `trace_retriever`, which makes the KB interaction easier to validate in ADK traces.
+- The system prompt explicitly tells the model to retrieve before answering factual questions and to avoid unsupported claims.
 
 ## Resources
 
 - [DigitalOcean Knowledge Bases](https://docs.digitalocean.com/products/genai/concepts/knowledge-bases/)
-- [GenAI API Reference](https://docs.digitalocean.com/reference/api/api-reference/#tag/GenAI)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

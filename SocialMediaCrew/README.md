@@ -1,6 +1,6 @@
 # SocialMediaCrew - Multi-Agent Workflows with Image Generation
 
-A complete social media content creation system with five specialized agents that research trends, write posts, optimize for platforms, review quality, and generate images. Built with LangGraph for workflow orchestration on the DigitalOcean Gradient AI Platform.
+A complete social media content creation system with five specialized agents that research trends, write posts, optimize for platforms, review quality, and generate images. Built with LangGraph for workflow orchestration on the DigitalOcean AI Platform.
 
 ## Use Case
 
@@ -15,7 +15,7 @@ Automate social media content creation with AI. This template demonstrates a pro
 
 **Multi-agent workflows** allow you to break complex tasks into specialized steps, each handled by a focused agent. This template uses five agents in sequence: a Researcher gathers trending topics, a Copywriter drafts content, a Social Media Manager optimizes for the target platform, a Reviewer scores quality and requests revisions if needed, and an Image Prompt Designer creates prompts for visual content.
 
-**Image generation** on the Gradient AI Platform uses DigitalOcean's Serverless Inference. The template shows how to call image models (like fal fast-sdxl) from within your agent workflow, allowing you to produce complete posts with accompanying visuals in a single pipeline run.
+**Image generation** on the DigitalOcean AI Platform uses DigitalOcean's Serverless Inference. The template shows how to call image models (like fal fast-sdxl) from within your agent workflow, allowing you to produce complete posts with accompanying visuals in a single pipeline run.
 
 ## Architecture
 
@@ -66,7 +66,7 @@ Automate social media content creation with AI. This template demonstrates a pro
 │  │ Image Prompt    │──▶│ Image Generator │                             │
 │  │ Designer        │    │                 │                             │
 │  │                 │    │ fal fast-sdxl   │                             │
-│  │ - Art direction │    │ via Gradient    │                             │
+│  │ - Art direction │    │ via DO AI       │                             │
 │  └─────────────────┘    └────────┬────────┘                             │
 │                                  │                                      │
 │                                  ▼                                      │
@@ -438,4 +438,4 @@ workflow.add_conditional_edges(
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [Serper API Documentation](https://serper.dev/docs)
 - [DigitalOcean GenAI Serverless](https://docs.digitalocean.com/products/genai/how-to/inference/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)

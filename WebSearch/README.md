@@ -10,7 +10,7 @@ This template shows how to build a web search agent, but the real focus is on **
 - How to define and bind tools to an LLM
 - How the LLM decides when to use a tool vs. answer directly
 - Using LangChain's `create_agent` helper for quick setup
-- Automatic tracing of tool calls on the Gradient AI Platform
+- Automatic tracing of tool calls on the DigitalOcean AI Platform
 
 ## Key Concepts
 
@@ -329,10 +329,10 @@ executor = AgentExecutor(
 
 - DuckDuckGo search is free but may have rate limits for high-volume usage
 - For production use, consider Tavily or Serper for more reliable search
-- All tool calls are automatically traced to the Gradient AI Platform after deployment
+- All tool calls are automatically traced to the DigitalOcean AI Platform after deployment
 
 ## Resources
 
 - [LangChain Tools Documentation](https://python.langchain.com/docs/modules/tools/)
 - [DuckDuckGo Search Tool](https://python.langchain.com/docs/integrations/tools/ddg/)
-- [Gradient ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
+- [ADK Documentation](https://docs.digitalocean.com/products/gradient/adk/)
